@@ -27,3 +27,6 @@ private/
 
 # Local design screenshots for review
 design-previews/
+
+# Local Claude notes
+CLAUDE.local.md
