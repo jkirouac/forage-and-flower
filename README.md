@@ -6,13 +6,14 @@ A shared garden app for one household in Victoria, BC: the fall and spring plant
 - What gets built, in what order: `PLAN.md`
 
 ## How it works
-- Installable web app (Vite + React + TypeScript + vite-plugin-pwa), hosted on GitHub Pages at `/forage-and-flower/`.
-- Data will live in a shared Supabase project, in its own `garden` schema. That project's migrations are managed outside this repo. Not connected yet (PLAN.md, build step 1).
+- Installable web app (Vite + React + TypeScript + vite-plugin-pwa), hosted on GitHub Pages at https://garden.packed.camp.
+- Data lives in a shared Supabase project, in its own `garden` schema. That project's migrations are managed outside this repo.
+- Sign-in is email and password, on the shared project's login. Reset and confirm emails link back to the site root, which reads the token on load.
 - Fonts (Newsreader, Public Sans) are bundled so the app works offline.
 
 ## Develop
 1. `npm install`
-2. `npm run dev` and open http://localhost:5173/forage-and-flower/
+2. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the environment (the deploy workflow reads them from repo variables), then `npm run dev` and open http://localhost:5173/
 3. `npm run icons` after changing `public/icon.svg`.
 
 ## Importing the garden

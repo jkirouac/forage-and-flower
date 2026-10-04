@@ -5,6 +5,9 @@ import Plants from './screens/Plants'
 import Pollinators from './screens/Pollinators'
 import Settings from './screens/Settings'
 import { NavIcon, type NavKind } from './screens/NavIcon'
+import SignIn from './screens/SignIn'
+import NewPassword from './screens/NewPassword'
+import { configured, hasEmailLink, readEmailLink, useSession, type Arrival } from './lib/supabase'
 
 type Screen = NavKind | 'settings'
 
@@ -22,6 +25,34 @@ function screenFromHash(): Screen {
 }
 
 export default function App() {
+  const session = useSession()
+  // A reset or confirm link is checked before deciding what to show.
+  const [checkingLink, setCheckingLink] = useState(hasEmailLink)
+  const [arrival, setArrival] = useState<Arrival>(null)
+
+  useEffect(() => {
+    void readEmailLink().then((a) => {
+      setArrival(a)
+      setCheckingLink(false)
+    })
+  }, [])
+
+  if (!configured) {
+    return (
+      <div className="app">
+        <main className="screen">
+          <p className="empty">This copy of the app isn't connected to a database.</p>
+        </main>
+      </div>
+    )
+  }
+  if (checkingLink || session === undefined) return null
+  if (arrival === 'recovery' && session) return <NewPassword onDone={() => setArrival(null)} />
+  if (!session) return <SignIn arrival={arrival} />
+  return <Garden />
+}
+
+function Garden() {
   const [screen, setScreen] = useState<Screen>(screenFromHash)
 
   useEffect(() => {

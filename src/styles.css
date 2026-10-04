@@ -170,6 +170,61 @@ h1 {
   color: var(--accent-ink);
 }
 
+/* Forms: sign-in and settings */
+.form {
+  display: grid;
+  gap: 14px;
+  max-width: 420px;
+}
+.field {
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.field input {
+  font: 400 1rem var(--body);
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.choice:not([role='radio']) {
+  justify-self: start;
+}
+.form-links {
+  display: grid;
+  justify-items: start;
+}
+.text-button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  max-width: 60ch;
+}
+.notice-error {
+  background: var(--surface);
+  border-left: 3px solid var(--bloom);
+}
+
 /* Bottom tab bar */
 .tabbar {
   position: sticky;

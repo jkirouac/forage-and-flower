@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Served from GitHub Pages at /forage-and-flower/.
-const base = '/forage-and-flower/'
+// Served from GitHub Pages on its own address, garden.packed.camp.
+const base = '/'
 
 // GitHub Pages can't send security headers, so the built page carries its own
 // Content-Security-Policy: only our own scripts (plus the inline theme script, by hash),
