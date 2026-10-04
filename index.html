@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f1e6" />
+    <script>
+      // Light unless Dark (or Match my phone) was chosen; see src/lib/theme.ts.
+      // Runs before the page draws, so it never flashes the wrong colours.
+      ;(function () {
+        var pref = 'light'
+        try {
+          pref = localStorage.getItem('ff-theme') || 'light'
+        } catch (e) {}
+        var dark = pref === 'dark' || (pref === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+        if (dark) document.documentElement.setAttribute('data-theme', 'dark')
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#1a1c18' : '#f5f1e6')
+      })()
+    </script>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Forage &amp; Flower" />
+    <link rel="icon" type="image/svg+xml" href="/forage-and-flower/favicon.svg" />
+    <link rel="apple-touch-icon" href="/forage-and-flower/apple-touch-icon.png" />
+    <title>Forage &amp; Flower</title>
+    <meta name="description" content="Our garden through the year: what to plant, where to buy it, and what to do this month." />
+    <!-- A private app for one household, so it stays out of search results. -->
+    <meta name="robots" content="noindex" />
+    <meta name="referrer" content="no-referrer" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

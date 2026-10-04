@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Forage & Flower: a fir-green tile with a paper-coloured flower on a stem. -->
+  <rect width="512" height="512" rx="112" fill="#2f5d46"/>
+  <path d="M256 430 V250" stroke="#f5f1e6" stroke-width="22" stroke-linecap="round" fill="none"/>
+  <path d="M256 360 C196 356 160 318 156 262 C214 266 250 302 256 360 Z" fill="#a3b18a"/>
+  <g fill="#f5f1e6">
+    <ellipse cx="256" cy="148" rx="34" ry="56"/>
+    <ellipse cx="256" cy="148" rx="34" ry="56" transform="rotate(72 256 196)"/>
+    <ellipse cx="256" cy="148" rx="34" ry="56" transform="rotate(144 256 196)"/>
+    <ellipse cx="256" cy="148" rx="34" ry="56" transform="rotate(216 256 196)"/>
+    <ellipse cx="256" cy="148" rx="34" ry="56" transform="rotate(288 256 196)"/>
+  </g>
+  <circle cx="256" cy="196" r="30" fill="#c2553d"/>
+</svg>

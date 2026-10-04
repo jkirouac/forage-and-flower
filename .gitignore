@@ -1,0 +1,29 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?
+
+# Supabase CLI working files
+supabase/.temp/
+supabase/.branches/
+
+# Imported garden data and review files. The repo is public; the garden is not.
+scripts/private/
+
+# Setup notes with personal details and local paths
+private/
+
+# Local design screenshots for review
+design-previews/
