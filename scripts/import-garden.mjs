@@ -23,6 +23,11 @@ const read = (rel) => fs.readFileSync(path.join(gardenDir, rel), 'utf8').replace
 const report = { decide: [], inferred: [], skipped: [], mismatch: [] }
 const note = (kind, text) => report[kind].push(text)
 
+// Answers to earlier reports (git-ignored), so a re-run applies them instead of asking again.
+const decisionsPath = path.resolve(process.env.IMPORT_DECISIONS ?? 'scripts/private/import-decisions.json')
+const decisions = fs.existsSync(decisionsPath) ? JSON.parse(fs.readFileSync(decisionsPath, 'utf8')) : {}
+const applied = []
+
 // ---------- helpers ----------
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
@@ -119,6 +124,8 @@ function splitName(variety) {
     // Parens that describe the plant rather than name it, e.g. "(STRAIGHT native, not cultivar)".
     const firstPart = paren.split(',')[0].trim()
     if (/\b(not|native|or)\b|[A-Z]{3,}/.test(firstPart)) {
+      const named = decisions.plant_names?.[slug(latin)]
+      if (named) return { common: named, latin, aside: paren }
       note('decide', `Common name for *${latin}*: the list says "(${paren})". Using the Latin name until you give one.`)
       return { common: latin, latin, aside: paren }
     }
@@ -204,7 +211,13 @@ const nurseries = []
   flush()
   for (const n of nurseries) {
     n.notes = n.notes.join(' ')
-    if (n.notes.includes('Verify URL')) note('decide', `${n.name}: suppliers.md says "Verify URL".`)
+    const d = decisions.nurseries?.[n.key]
+    if (d) {
+      n.url = d.url ?? n.url
+      n.notes = [n.notes.replace(/\s*Verify URL\.?/g, ''), d.notes_add].filter(Boolean).join(' ')
+      n.last_checked = decisions.decided_on ?? null
+      applied.push(`${n.name}: website and notes`)
+    } else if (n.notes.includes('Verify URL')) note('decide', `${n.name}: suppliers.md says "Verify URL".`)
   }
 }
 // Referenced by the shopping lists but missing from suppliers.md.
@@ -300,6 +313,15 @@ function addPlan({ file, season, sectionNursery }) {
       const nursery = sectionNursery(t.heading, plant)
       const base = { plant: plant.key, season, status: 'to buy', nursery, notes, source: `${file} · ${t.heading}` }
 
+      const decisionKey = `${plant.key}|${season}`
+      const single = decisions.single_item?.[decisionKey]
+      if (single) {
+        planItems.push({ ...base, site: null, where: single.where, qty_min: single.qty[0], qty_max: single.qty[1] })
+        applied.push(`${plant.common} (${season}): ${single.where}`)
+        continue
+      }
+      const split = decisions.splits?.[decisionKey]
+
       let allocations = row.sites ? siteAllocations(row.sites) : []
       if (!row.sites) {
         // Spring 2027 keeps sites in the notes: "Site 7", "Sites 2 / 6 / 9".
@@ -314,9 +336,15 @@ function addPlan({ file, season, sectionNursery }) {
         } else if (full && allocations.length > 0) {
           const older = siteAllocations(full).map((a) => a.site).join(', ')
           const newer = allocations.map((a) => a.site).join(', ')
-          if (older !== newer) note('decide', `${plant.common} (${season}): this list says Sites ${newer}; shopping-list-2026.md says ${full}. Using Sites ${newer}.`)
+          if (older !== newer && !split) note('decide', `${plant.common} (${season}): this list says Sites ${newer}; shopping-list-2026.md says ${full}. Using Sites ${newer}.`)
         }
       }
+
+      if (split) {
+        allocations = Object.entries(split).map(([site, q]) => ({ site: Number(site), qty: q, where: null }))
+        applied.push(`${plant.common} (${season}): ${allocations.map((a) => `Site ${a.site} ×${a.qty[0] === a.qty[1] ? a.qty[0] : a.qty.join('–')}`).join(', ')}`)
+      }
+      const estimateOk = decisions.estimates_ok?.includes(plant.key)
 
       if (allocations.length === 0) {
         planItems.push({ ...base, site: null, qty_min: qmin, qty_max: qmax })
@@ -326,15 +354,17 @@ function addPlan({ file, season, sectionNursery }) {
         planItems.push({ ...base, site: a.site, where: a.where, qty_min: a.qty?.[0] ?? qmin, qty_max: a.qty?.[1] ?? qmax })
       } else if (allocations.every((a) => a.qty)) {
         for (const a of allocations) {
-          planItems.push({ ...base, site: a.site, where: a.where, qty_min: a.qty[0], qty_max: a.qty[1] })
-          if (a.approx) note('decide', `${plant.common} at Site ${a.site}: quantity is an estimate (~${a.qty[0]}).`)
+          const estimate = a.approx ? { estimate: true } : {}
+          planItems.push({ ...base, ...estimate, site: a.site, where: a.where, qty_min: a.qty[0], qty_max: a.qty[1] })
+          if (a.approx && estimateOk) applied.push(`${plant.common} at Site ${a.site}: ${a.qty[0]}, kept as an estimate`)
+          else if (a.approx) note('decide', `${plant.common} at Site ${a.site}: quantity is an estimate (~${a.qty[0]}).`)
         }
       } else {
         // Several sites but no split given: one item per site, total left to decide.
         for (const a of allocations) planItems.push({ ...base, site: a.site, where: a.where, qty_min: null, qty_max: null })
         note('decide', `${plant.common} (${season}): ${qmin === qmax ? qmin : `${qmin}–${qmax}`} ${kind === 'annual from seed' ? 'packet' : 'plants'} across Sites ${allocations.map((a) => a.site).join(', ')}, with no split. How many at each?`)
       }
-      if (qmin !== qmax && allocations.length <= 1) note('decide', `${plant.common} (${season}): quantity is a range (${qmin}–${qmax}). Pick a number, or keep the range.`)
+      if (qmin !== qmax && allocations.length <= 1 && !decisions.keep_ranges) note('decide', `${plant.common} (${season}): quantity is a range (${qmin}–${qmax}). Pick a number, or keep the range.`)
     }
   }
 }
@@ -476,6 +506,7 @@ const recurring = []
     recurring.push({ title: title.replace(/\s*\(.*$/, ''), detail: rest.join('. ') || null, section: 'do', every: 'month' })
   }
 }
+const MONTH_LIST = Object.keys(MONTH_NAMES).map((m) => m[0].toUpperCase() + m.slice(1))
 const ACTION = { 'start indoors': 'plant', 'direct sow': 'plant', transplant: 'plant', harvest: 'do', other: 'do' }
 for (const t of tables(schedule)) {
   if (!t.headers.includes('action')) continue
@@ -498,9 +529,22 @@ for (const t of tables(schedule)) {
       else note('inferred', `"${text}" is in the October–November section with no month hint; added to both.`)
     }
     const title = action === 'other' ? text : `${row.action}: ${text}`
-    for (const month of target) tasks.push({ month, section: ACTION[action] ?? 'do', title, link, source: `planning/schedule.md · ${t.heading}` })
+    for (const month of target) tasks.push({ month, section: ACTION[action] ?? 'do', title, link, source: `planning/schedule.md · ${t.heading}`, combined: months.length > 1 })
   }
 }
+
+// Decided months for tasks that sat in a combined section, and tasks added from the reminder email.
+for (const { match, month } of decisions.task_months ?? []) {
+  const before = tasks.length
+  for (let i = tasks.length - 1; i >= 0; i--) if (tasks[i].combined && tasks[i].title.includes(match) && tasks[i].month !== month) tasks.splice(i, 1)
+  report.inferred = report.inferred.filter((n) => !n.includes(match))
+  if (tasks.length < before) applied.push(`"${match}": ${MONTH_LIST[month - 1]} only`)
+}
+for (const t of decisions.extra_tasks ?? []) {
+  tasks.push({ month: t.month, section: t.section, title: t.title, link: null, source: 'reminder email (added by decision)' })
+  applied.push(`Added to ${MONTH_LIST[t.month - 1]}: ${t.title}`)
+}
+const fromEmail = new Set((decisions.extra_tasks ?? []).map((t) => t.from_email).filter(Boolean))
 
 // Cross-check: every reminder-email item should have a schedule task in the same month.
 // The reminder job's task file is optional: REMINDER_TASKS_JSON in .env.local.
@@ -512,7 +556,7 @@ for (const [m, entry] of Object.entries(json)) {
   const monthText = tasks.filter((t) => t.month === Number(m)).map((t) => t.title.toLowerCase()).join(' ') + ' worm wigwam crank'
   for (const item of [...entry.start_indoors, ...entry.direct_sow, ...entry.transplant, ...entry.other]) {
     const key = words(item).slice(0, 3)
-    if (key.length && !key.every((w) => monthText.includes(w))) note('mismatch', `${entry.month}: the reminder email has "${item}" but schedule.md has no matching task.`)
+    if (key.length && !fromEmail.has(item) && !key.every((w) => monthText.includes(w))) note('mismatch', `${entry.month}: the reminder email has "${item}" but schedule.md has no matching task.`)
   }
 }
 
@@ -539,6 +583,11 @@ if (seeds) {
   review.push('')
 }
 
+// Inferences you've confirmed (regexes in the decisions file) leave the report.
+const acceptRes = (decisions.accept_inferred ?? []).map((r) => new RegExp(r, 'i'))
+const acceptedCount = report.inferred.filter((n) => acceptRes.some((re) => re.test(n))).length
+report.inferred = report.inferred.filter((n) => !acceptRes.some((re) => re.test(n)))
+
 // ---------- write ----------
 
 const out = {
@@ -549,7 +598,7 @@ const out = {
   plants: [...plants.values()].map((p) => ({ ...p, sources: [...p.sources] })),
   rules,
   plan_items: planItems,
-  tasks,
+  tasks: tasks.map(({ combined: _combined, ...t }) => t),
   recurring_tasks: recurring,
 }
 
@@ -568,7 +617,9 @@ fs.writeFileSync(
     '',
     `Imported: ${sites.length} sites, ${nurseries.length} nurseries, ${plants.size} plants, ${rules.length} rules, ${planItems.length} plan items, ${tasks.length} monthly tasks, ${recurring.length} recurring task.`,
     '',
+    decisions.decided_on ? `Decisions file from ${decisions.decided_on}: ${applied.length} answers applied, ${acceptedCount} inferences confirmed.\n` : '',
     section('Needs a decision', report.decide, 'Nothing is loaded until these are answered.'),
+    section('Applied from the decisions file', applied, 'Your earlier answers.'),
     section('Inferred', report.inferred, 'The script filled these in. Check they are right.'),
     section('Reminder email vs schedule', report.mismatch, 'In the reminder email but not in schedule.md. Add these to the app, or drop them?'),
     section('Skipped', report.skipped, 'Left out on purpose.'),
