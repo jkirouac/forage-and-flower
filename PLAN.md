@@ -85,10 +85,9 @@ A one-time import script reads the garden notes and writes to the app, then prin
 | Plants on your plan and in the schedule, plus the threatened-species plants from `plants/perennial-flowers.md` | `plants` (start small, decided 2026-10-03; the other ranked files come later) |
 | The notes' site list and biochar, castings and mulch rules | `sites`, `rules` |
 
-Two things need you before the import runs:
+Before the import runs, anything the script can't place cleanly (a plant at a site that doesn't exist, a quantity like "2–3") gets a decision. Answers are kept in a private decisions file, so a re-run applies them instead of asking again. **Done 2026-10-03:** every question answered.
 
-1. **What you already bought.** The spring 2026 lists don't say what was bought. We go through them once together, and items get the right status.
-2. **The report.** Anything the script can't place cleanly (a plant at a site that doesn't exist, a quantity like "2–3") gets a decision from you.
+**Spring 2026 purchases are not reviewed up front** (decided 2026-10-03). The current fall 2026 and spring 2027 lists are imported as they are, and quantities, sites and statuses are corrected in the app as you go.
 
 After the import, the schedule and shopping-list files get a note at the top saying the app is now the working copy. Design files stay as they are.
 
@@ -97,9 +96,9 @@ After the import, the schedule and shopping-list files get a note at the top say
 Each step ends with something you can use.
 
 1. **Set up.** Repo, app shell, the `garden` schema, sign-in, and your garden with both of you as members. A privacy check confirms an outsider can't read it.
-2. **Import.** Script, review of the spring purchases, and the report.
+2. **Import.** Script and report (done), then loading the result into the database.
 3. **This month.** The checklist under Do / Plant / Buy, initials on ticks, swipe to finish or push to next month, works offline. This is the screen you'll use weekly, so it comes first.
-4. **Seasons.** Fall and spring lists grouped by nursery, with status changes.
+4. **Seasons.** Fall and spring lists grouped by nursery. Edit any item in place: quantity, site, nursery, status (to buy, bought, planted, skipped). Add a plant to a season, or remove one. This is where the lists get corrected, since spring 2026 purchases weren't reviewed before the import.
 5. **Plant pages.** The 12-month bar, the rules box, where to buy, and the planting log. Recording a planting from here also ticks the matching task.
 6. **Pollinator picks.** The ranked list with reasons, and the year ring with a plain list beneath it.
 7. **Monthly email.** The function that builds the email, its token, and a change to the reminder job to fetch from it instead of its task file. Then retire the task file.
