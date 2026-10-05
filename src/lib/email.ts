@@ -65,15 +65,27 @@ function buyHtml(data: EmailData, season: string) {
   const groups = groupByNursery(items, data.nurseries, data.plants)
   // Counted by plant, as on Shopping: Great Camas for five sites is one thing to buy.
   const count = groups.reduce((n, g) => n + groupByPlant(g.items, data.plants).length, 0)
-  const lines = groups.map((g) => {
-    const plants = groupByPlant(g.items, data.plants).map((pg) => {
-      const name = data.plants.find((p) => p.id === pg.plant_id)?.common ?? 'Unknown plant'
-      return `${esc(name)} × ${qtyLabel(pg.qtyMin, pg.qtyMax)}`
-    })
-    const where = g.nursery ? `<strong>${esc(g.nursery.name)}</strong>${g.nursery.location ? ` <span style="color:${MUTED}">(${esc(g.nursery.location)})</span>` : ''}` : '<strong>No nursery yet</strong>'
-    return `<li style="margin:0 0 8px">${where}: ${plants.join(', ')}</li>`
+  // One block per nursery, like a shopping list: the nursery, then a plant a line
+  // with how many on the right. Tables, because email clients ignore most layout CSS.
+  const blocks = groups.map((g) => {
+    const plants = groupByPlant(g.items, data.plants)
+      .map((pg) => ({ name: data.plants.find((p) => p.id === pg.plant_id)?.common ?? 'Unknown plant', qty: qtyLabel(pg.qtyMin, pg.qtyMax) }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+    const rows = plants
+      .map(
+        (p) =>
+          `<tr><td style="padding:5px 0;border-top:1px solid ${LINE}">${esc(p.name)}</td><td style="padding:5px 0 5px 12px;border-top:1px solid ${LINE};text-align:right;white-space:nowrap;color:${MUTED}">× ${esc(p.qty)}</td></tr>`,
+      )
+      .join('')
+    const name = g.nursery?.name ?? 'No nursery yet'
+    const sub = [g.nursery?.location, `${plants.length} ${plants.length === 1 ? 'plant' : 'plants'}`].filter(Boolean).join(' · ')
+    return `<div style="margin:0 0 18px">
+<p style="margin:0;font-weight:600">${esc(name)}</p>
+<p style="margin:0 0 4px;font-size:14px;color:${MUTED}">${esc(sub)}</p>
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;font-size:15px">${rows}</table>
+</div>`
   })
-  return `<p style="color:${MUTED};margin:0 0 6px">From the ${seasonLabel(season)} list, ${count} ${count === 1 ? 'plant' : 'plants'} still to buy:</p><ul style="padding-left:20px;margin:0">${lines.join('')}</ul>`
+  return `<p style="color:${MUTED};margin:0 0 12px">From the ${seasonLabel(season)} list, ${count} ${count === 1 ? 'plant' : 'plants'} still to buy:</p>${blocks.join('')}`
 }
 
 export function buildEmail(data: EmailData, year: number, month: number) {

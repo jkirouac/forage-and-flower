@@ -79,7 +79,8 @@ test('Buy: the list being shopped for, one line per nursery, a plant once', () =
   const { html } = buildEmail(data(), 2026, 10)
   assert.match(html, /From the Fall 2026 list, 1 plant still to buy/)
   assert.match(html, /Fraser&#39;s Thimble Farms|Fraser's Thimble Farms/)
-  assert.match(html, /Great Camas × 10/)
+  assert.match(html, /Great Camas<\/td><td[^>]*>× 10</)
+  assert.match(html, /Salt Spring Island, BC · 1 plant/)
   assert.doesNotMatch(buildEmail(data(), 2026, 7).html, /still to buy/)
 })
 
