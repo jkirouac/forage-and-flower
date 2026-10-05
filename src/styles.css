@@ -630,6 +630,116 @@ h1 {
   max-width: 60ch;
 }
 
+/* Plant page: photo, at a glance, why, Do / Don't */
+.plant-photo {
+  margin: 4px 0 8px;
+  display: grid;
+  gap: 4px;
+}
+.plant-photo img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--line);
+}
+.plant-photo figcaption {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.plant-photo figcaption a {
+  color: inherit;
+}
+.plant-photo.none {
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.glance {
+  gap: 12px;
+}
+.trait-chips {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.trait-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+.trait-chips svg {
+  color: var(--accent);
+  flex: none;
+}
+.why-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 4px;
+  max-width: 60ch;
+}
+.bar-key {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.bar-key > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.key-swatch.plant {
+  background: var(--accent);
+}
+.key-swatch.now {
+  background: none;
+  outline: 1.5px solid var(--ink);
+  outline-offset: -1px;
+}
+.rules-summary {
+  display: grid;
+  gap: 8px;
+}
+.block > .text-button {
+  justify-self: start;
+}
+.rules-summary p {
+  margin: 0;
+  display: flex;
+  gap: 10px;
+}
+.rules-summary p[data-verdict='yes'] .rule-mark {
+  color: var(--accent);
+}
+.list-lines {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 6px;
+}
+.list-lines a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.list-status {
+  color: var(--muted);
+}
+
 /* The 12-month bar: one row each for planting, flowering and pollinators. */
 .month-bar {
   display: grid;
@@ -781,6 +891,8 @@ h1 {
 }
 .key-swatch.bloom {
   background: var(--bloom);
+}
+.ring-key .key-swatch.bloom {
   margin-left: 8px;
 }
 .month-list {

@@ -38,6 +38,11 @@ function applyLog(data: Catalogue, ops: Op[]): Catalogue {
           threat_reason: null,
           rank: null,
           why: null,
+          size: null,
+          pollinators: null,
+          photo_url: null,
+          photo_page: null,
+          photo_credit: null,
           ...(op.row as object),
         } as unknown as FullPlant,
       ]
@@ -53,7 +58,7 @@ export async function loadCatalogue(userId: string): Promise<Catalogue> {
       supabase
         .from('plants')
         .select(
-          'id, key, common, latin, kind, native, tags, plant_months, bloom_months, pollinator_months, threat_tier, threat_reason, rank, why',
+          'id, key, common, latin, kind, native, tags, plant_months, bloom_months, pollinator_months, threat_tier, threat_reason, rank, why, size, pollinators, photo_url, photo_page, photo_credit',
         )
         .order('common'),
       supabase.from('rules').select('id, topic, verdict, text, plant_id, tag, kind, garden_id, site_id'),

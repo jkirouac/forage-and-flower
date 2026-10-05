@@ -4,11 +4,30 @@ import { useSeasons } from '../lib/seasons'
 import { useGarden } from '../lib/garden'
 import { buildMonth, SECTIONS } from '../lib/month'
 import { qtyLabel, seasonLabel, type Nursery, type PlanItem, type Site } from '../lib/plan'
-import { ACTIONS, plantingMonths, rulesFor, taskForPlanting, type Action, type FullPlant, type Planting } from '../lib/plants'
+import {
+  ACTIONS,
+  plantingMonths,
+  plantTraits,
+  rulesFor,
+  summarizeRules,
+  taskForPlanting,
+  whyBullets,
+  type Action,
+  type FullPlant,
+  type Planting,
+  type Rule,
+  type Trait,
+} from '../lib/plants'
 import { MONTHS, shortDate } from '../lib/season'
+import { Icon, KindIcon } from './Icons'
 
 const ACTION_LABEL: Record<Action, string> = { planted: 'Planted', sown: 'Sown', moved: 'Moved', divided: 'Divided', died: 'Died' }
-const STATUS_LABEL: Record<string, string> = { 'to buy': 'To buy', bought: 'Bought', planted: 'Planted', skipped: 'Skipped' }
+const STATUS_LINE: Record<string, string> = {
+  'to buy': 'not bought yet',
+  bought: 'bought, not planted yet',
+  planted: 'planted',
+  skipped: 'skipped',
+}
 const LETTERS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 
 const today = () => {
@@ -16,9 +35,10 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// A plant page: why it's here, when it's planted and in flower, the rules for it,
-// where it's on your lists and where to buy it, and what you've done with it.
-// Recording a planting also marks its list item planted and ticks this month's task.
+// A plant page: a photo, what it feeds and what it's like at a glance, why it's
+// here, when it's planted and in flower, what to do and not use, where it's being
+// bought and planted, and what you've done with it. Recording a planting also marks
+// its list item planted and ticks this month's task.
 export default function PlantPage({ userId, plantId }: { userId: string; plantId: string }) {
   const catalogue = useCatalogue(userId)
   const seasons = useSeasons(userId)
@@ -28,6 +48,7 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
   const garden = useGarden(userId, year)
   const [recording, setRecording] = useState(false)
   const [saved, setSaved] = useState('')
+  const [photoFailed, setPhotoFailed] = useState(false)
 
   const plant = catalogue.data?.plants.find((p) => p.id === plantId)
   const sites = seasons.data?.sites ?? []
@@ -99,17 +120,46 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
     <>
       <header className="page-head">
         {back}
-        <p className="kicker">
-          {plant.kind}
-          {plant.native ? ' · BC native' : ''}
-        </p>
+        {plant.photo_url && !photoFailed ? (
+          <figure className="plant-photo">
+            <img
+              src={plant.photo_url}
+              alt={plant.common}
+              loading="lazy"
+              decoding="async"
+              crossOrigin="anonymous"
+              referrerPolicy="no-referrer"
+              onError={() => setPhotoFailed(true)}
+            />
+            {plant.photo_credit && (
+              <figcaption>
+                Photo:{' '}
+                {plant.photo_page ? (
+                  <a href={plant.photo_page} target="_blank" rel="noreferrer">
+                    {plant.photo_credit}
+                  </a>
+                ) : (
+                  plant.photo_credit
+                )}
+              </figcaption>
+            )}
+          </figure>
+        ) : (
+          <div className="plant-photo none" aria-hidden="true">
+            <KindIcon kind={plant.kind} size={44} />
+          </div>
+        )}
+        <p className="kicker">{plant.kind}</p>
         <h1>{plant.common}</h1>
-        {plant.latin && <p className="latin plant-latin">{plant.latin}</p>}
+        {plant.latin && plant.latin !== plant.common && <p className="latin plant-latin">{plant.latin}</p>}
       </header>
       <hr className="rule" />
 
+      <AtAGlance plant={plant} />
+
       {(plant.threat_reason || plant.why) && (
         <section className="block">
+          <h2 className="label">Why it's here</h2>
           {plant.threat_reason && (
             <p className="threat-line">
               <span className="threat-tier" data-tier={plant.threat_tier ?? undefined}>
@@ -118,42 +168,47 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
               {plant.threat_reason}
             </p>
           )}
-          {plant.why && <p className="plant-why">{plant.why}</p>}
+          {plant.why && (
+            <ul className="why-list">
+              {whyBullets(plant.why).map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
       <section className="block">
         <h2 className="label">Through the year</h2>
-        {rows.length ? <MonthBar rows={rows} current={month} /> : <p className="empty">No planting or flowering months for this plant yet.</p>}
+        {rows.length ? (
+          <>
+            <MonthBar rows={rows} current={month} />
+            <p className="bar-key">
+              {rows.map((r) => (
+                <span key={r.tone}>
+                  <span className={`key-swatch ${r.tone}`} /> {r.label === 'Planting' ? 'Planting time' : r.label === 'Flowering' ? 'In flower' : 'Pollinators use it'}
+                </span>
+              ))}
+              <span>
+                <span className="key-swatch now" /> This month
+              </span>
+            </p>
+          </>
+        ) : (
+          <p className="empty">No planting or flowering months for this plant yet.</p>
+        )}
       </section>
 
-      {rules.length > 0 && (
-        <section className="block">
-          <h2 className="label">Rules for this plant</h2>
-          <ul className="rules-box">
-            {rules.map((r) => (
-              <li key={r.id} data-verdict={r.verdict}>
-                <span className="rule-mark" aria-hidden="true">
-                  {r.verdict === 'no' ? '✕' : '✓'}
-                </span>
-                <span>
-                  {r.site_id && <strong>Site {siteById(r.site_id)?.number}: </strong>}
-                  {r.text}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {rules.length > 0 && <RulesSummary rules={rules} siteNumber={(id) => siteById(id)?.number} />}
 
       <section className="block">
-        <h2 className="label">On our lists</h2>
+        <h2 className="label">Shopping and planting</h2>
         {items.length === 0 ? (
-          <p className="empty">Not on a list yet. Add it from Shopping.</p>
+          <p className="empty">Not on a shopping list. Add it from Shopping.</p>
         ) : (
-          <ul className="plan-list">
-            {items.map((i) => (
-              <ListLine key={i.id} item={i} site={siteById(i.site_id)} nursery={nurseries.find((n) => n.id === i.nursery_id)} />
+          <ul className="list-lines">
+            {listGroups(items).map((g) => (
+              <ListLine key={g.key} items={g.items} sites={sites} nursery={nurseries.find((n) => n.id === g.items[0].nursery_id)} />
             ))}
           </ul>
         )}
@@ -218,22 +273,128 @@ function MonthBar({ rows, current }: { rows: { label: string; months: number[]; 
   )
 }
 
-function ListLine({ item, site, nursery }: { item: PlanItem; site: Site | undefined; nursery: Nursery | undefined }) {
-  const where = [seasonLabel(item.season), `× ${qtyLabel(item.qty_min, item.qty_max)}`, site ? `Site ${site.number} · ${site.name}` : 'No site yet']
-  const buy = nursery
-    ? [nursery.name, nursery.location, nursery.last_checked ? `checked ${shortDate(nursery.last_checked)}` : 'stock not checked yet']
-        .filter(Boolean)
-        .join(' · ')
-    : 'No nursery yet'
+// One line per season and nursery, as on Shopping: a plant going to five sites is one line.
+function listGroups(items: PlanItem[]) {
+  const groups = new Map<string, PlanItem[]>()
+  for (const i of items) {
+    const key = `${i.season}:${i.nursery_id ?? ''}`
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(i)
+  }
+  return [...groups.entries()].map(([key, list]) => ({ key, items: list }))
+}
+
+// "Fall 2026: buy 49 for Sites 2, 4, 5, 7 and 9 from Fraser's Thimble Farms. 1 of 5 bought."
+function ListLine({ items, sites, nursery }: { items: PlanItem[]; sites: Site[]; nursery: Nursery | undefined }) {
+  const site = (id: string | null) => sites.find((s) => s.id === id)
+  const numbers = items
+    .map((i) => site(i.site_id)?.number)
+    .filter((n): n is number => n !== undefined)
+    .sort((a, b) => a - b)
+  const only = items.length === 1 ? site(items[0].site_id) : undefined
+  const forSites = only
+    ? ` for Site ${only.number} (${only.name})`
+    : numbers.length
+      ? ` for Sites ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]}`
+      : ''
+  const from = nursery ? ` from ${nursery.name}` : ''
+  const min = items.reduce((n, i) => n + i.qty_min, 0)
+  const max = items.reduce((n, i) => n + i.qty_max, 0)
+  const statuses = new Set(items.map((i) => i.status))
+  const got = items.filter((i) => i.status !== 'to buy' && i.status !== 'skipped').length
+  const status =
+    statuses.size === 1 ? STATUS_LINE[items[0].status] : `${got} of ${items.length} bought`
   return (
-    <li className="plan-item">
-      <a className="plant-link" href="#seasons">
-        <span className="plan-name">
-          {where.join(' · ')} <span className="status-chip">{STATUS_LABEL[item.status]}</span>
-        </span>
-        <span className="plan-meta">Where to buy: {buy}</span>
+    <li>
+      <a href="#seasons">
+        <strong>{seasonLabel(items[0].season)}:</strong> buy {qtyLabel(min, max)}
+        {forSites}
+        {from}. <span className="list-status">{status[0].toUpperCase() + status.slice(1)}.</span>
       </a>
     </li>
+  )
+}
+
+// Who it feeds, what it's like, and how big it gets, as small icon chips.
+function AtAGlance({ plant }: { plant: FullPlant }) {
+  const { pollinators, traits } = plantTraits(plant)
+  if (!pollinators.length && !traits.length && !plant.size) return null
+  const chips = (list: Trait[]) => (
+    <ul className="trait-chips">
+      {list.map((t) => (
+        <li key={t.key}>
+          <Icon name={t.key} /> {t.label}
+        </li>
+      ))}
+    </ul>
+  )
+  return (
+    <section className="block glance">
+      {pollinators.length > 0 && (
+        <div>
+          <h2 className="label">Feeds</h2>
+          {chips(pollinators)}
+        </div>
+      )}
+      {(traits.length > 0 || plant.size) && (
+        <div>
+          <h2 className="label">Good to know</h2>
+          {chips([...traits, ...(plant.size ? [{ key: 'size', label: plant.size }] : [])])}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// What to do and what not to use, in two lines; the full rules, with their reasons
+// and which site each comes from, one tap away.
+function RulesSummary({ rules, siteNumber }: { rules: Rule[]; siteNumber: (id: string) => number | undefined }) {
+  const [open, setOpen] = useState(false)
+  const { doLines, dontLines } = summarizeRules(rules)
+  return (
+    <section className="block">
+      <h2 className="label">Planting it</h2>
+      <div className="rules-summary">
+        {doLines.length > 0 && (
+          <p data-verdict="yes">
+            <span className="rule-mark" aria-hidden="true">
+              ✓
+            </span>
+            <span>
+              <strong>Do:</strong> {doLines.map((l, i) => (i ? l[0].toLowerCase() + l.slice(1) : l)).join('; ')}.
+            </span>
+          </p>
+        )}
+        {dontLines.length > 0 && (
+          <p data-verdict="no">
+            <span className="rule-mark" aria-hidden="true">
+              ✕
+            </span>
+            <span>
+              <strong>Don't use:</strong> {dontLines.join(', ')}.
+            </span>
+          </p>
+        )}
+      </div>
+      <button type="button" className="text-button" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {open ? 'Hide the reasons' : 'Why? See the full rules'}
+      </button>
+      {open && (
+        <ul className="rules-box">
+          {rules.map((r) => (
+            <li key={r.id} data-verdict={r.verdict}>
+              <span className="rule-mark" aria-hidden="true">
+                {r.verdict === 'no' ? '✕' : '✓'}
+              </span>
+              <span>
+                {r.site_id ? <strong>Site {siteNumber(r.site_id)}: </strong> : !r.garden_id ? null : <strong>Whole garden: </strong>}
+                {r.text}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 

@@ -45,6 +45,7 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 | Spring and fall lists grouped by nursery, so each group is a shopping trip. | Our own shopping lists | Seasons | Built |
 | Each pollinator pick says why in plain words, e.g. "Winter food for western bumblebee queens (threatened)". | RHS Grow, Calscape | Pollinator picks, plant pages | Built |
 | Site rules on the plant page, in a ruled box: "No biochar here", "Fir mulch, not alder". | Seed packet backs | Plant pages | Built |
+| Small icon chips for who a plant feeds and what it's like, instead of a dense line of notes. | Structured, seed packets | Plant pages | Built |
 | A planting log per plant, filterable by action (planted, moved, divided, died). | Planta | Plant pages | Built |
 | Kind copy, and a monthly summary against your own past: "6 natives planted this fall, up from 2 last fall." | Gentler Streak | This month, monthly email | Planned |
 | Nursery notes with a "last checked" date, so stale stock info is visible. | Calscape (and its stale-data complaints) | Plant pages, Seasons | Built (Seasons) |
@@ -65,7 +66,7 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 
 1. **This month.** A kicker line ("OCTOBER · VICTORIA 9a"), a serif title for the season's theme ("Fall planting window"), then this month and the next two under month headers (more on request), each with Do / Plant / Buy. A task moved on shows under next month's header ("From Oct"), not greyed out where it was. Tap a card to open it: the full note, the how-to link, links to the plants it names, and labelled Done / Move to November. **Buy** comes from the Seasons list being shopped for (fall Sep–Nov, spring Feb–May), one card per nursery that opens to its plants; ticking one marks it bought. Chips filter: All · Do · Plant · Buy. "Plant now" cards: Planned.
 2. **Shopping** (was Seasons, renamed October 2026). Fall and spring lists, grouped by nursery. One card per plant with its sites inside ("Great Camas · × 49 · 5 sites"): its circle buys every site at once, and opening it shows each site with its own circle, quantity and editor. Status runs to buy, bought, planted (or skipped).
-3. **Plants.** Your plants first, then the wider ranked lists. A plant page holds: common and Latin name, 12-month bar, sites, why it's recommended, where to buy, site rules, and the planting log.
+3. **Plants.** Three sections, each with a line saying what it holds: **In the ground** (marked planted, or in the planting log), **On our shopping lists** (to buy or bought, not planted yet) and **More plants** (the rest of the catalogue). A plant page holds, top to bottom: a photo with its credit (or a drawn icon for its kind), common and Latin name, **Feeds** and **Good to know** as small icon chips (pollinators from the notes' Pollinators column; BC native, drought-tolerant, edible and so on from the notes; size), **Why it's here** as short bullets, the 12-month bar with a legend, **Planting it** as one Do line and one Don't-use line (the full rules, with reasons and sites, one tap away), **Shopping and planting** as one plain line per season and nursery, and the planting log.
 4. **Pollinator picks.** Plants ranked by support for threatened species, led by the threat-status tiebreaker in `perennial-flowers.md`. The year ring sits at the top, with a plain list below it for accessibility. **Built:** all 48 ranked plants; the ring's outer band is the rubric's critical windows (Dec–Mar winter, Feb–Apr emerging queens, Oct–Dec late season) and its petals the picks in flower each month, for our garden or all picks.
 
 Bottom navigation: Month · Shopping · Plants · Pollinators.
@@ -126,6 +127,6 @@ None right now.
 
 ## Also decided (2026-10-03)
 
-- **Photos:** none for now. Plant pages are designed to work without them; the photo space in the mocks becomes the 12-month bar and the reason line.
+- **Photos:** none at first (2026-10-03); changed 2026-10-06 to Wikimedia Commons thumbnails (330 px, about 50 KB each) on plant pages, credited with author and licence, loaded only when a page opens and kept on the phone once viewed (up to 150). Taken from the notes' links where there is one, otherwise from the Wikipedia page for the species; the importer reports plants with no photo, which show an icon for their kind.
 - **"Done by" label:** initials.
 - **Pollen colour:** ochre (`#b8860b` light, `#e0b64a` dark), chosen when plant pages were built. It is close to salmonberry in lightness but a different hue, and every bar row is labelled, so colour is never the only cue.

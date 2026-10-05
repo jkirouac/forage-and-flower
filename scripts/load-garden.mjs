@@ -59,14 +59,22 @@ begin
   end if;
 end $$;`)
 
+// A plant already there keeps everything the app may have changed; only the plant-page
+// details from the notes (size, pollinators, photo) are refreshed.
 sql.push(`-- Catalogue: plants
-insert into garden.plants (key, common, latin, kind, native, tags, plant_months, bloom_months, pollinator_months, threat_tier, threat_reason, rank, why) values
+insert into garden.plants (key, common, latin, kind, native, tags, plant_months, bloom_months, pollinator_months, threat_tier, threat_reason, rank, why, size, pollinators, photo_url, photo_page, photo_credit) values
 ${rows(data.plants, (p) => [
   text(p.key), text(p.common), text(p.latin), text(p.kind), bool(p.native), texts(p.tags),
   months(p.plant_months), months(p.bloom_months), months(p.pollinator_months),
   text(p.threat?.tier), text(p.threat?.reason), num(p.rank), text(p.why),
+  text(p.size), text(p.pollinators), text(p.photo?.url), text(p.photo?.page), text(p.photo?.credit),
 ])}
-on conflict (key) do nothing;`)
+on conflict (key) do update set
+  size = excluded.size,
+  pollinators = excluded.pollinators,
+  photo_url = excluded.photo_url,
+  photo_page = excluded.photo_page,
+  photo_credit = excluded.photo_credit;`)
 
 sql.push(`-- Catalogue: nurseries
 insert into garden.nurseries (key, name, category, url, location, notes, last_checked) values

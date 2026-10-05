@@ -19,6 +19,11 @@ export interface FullPlant {
   threat_reason: string | null
   rank: number | null
   why: string | null
+  size: string | null // "1–2 ft × 1–2 ft"
+  pollinators: string | null // "hummingbirds, bees, butterflies"
+  photo_url: string | null
+  photo_page: string | null
+  photo_credit: string | null
 }
 
 export interface Rule {
@@ -114,4 +119,117 @@ export function splitPlants(plants: FullPlant[], yours: Set<string>) {
 export function matchesSearch(plant: FullPlant, q: string) {
   const s = q.trim().toLowerCase()
   return !s || plant.common.toLowerCase().includes(s) || (plant.latin ?? '').toLowerCase().includes(s)
+}
+
+// ---------- plant pages: at a glance, why, rules ----------
+
+export interface Trait {
+  key: string // also the icon's name
+  label: string
+}
+
+const POLLINATORS: [RegExp, Trait][] = [
+  [/bumble ?bee|bombus/, { key: 'bumblebee', label: 'Bumblebees' }],
+  [/(^|[^a-z])bees?([^a-z]|$)/, { key: 'bee', label: 'Bees' }],
+  [/specialist|oligolege/, { key: 'specialist', label: 'Specialist bees' }],
+  [/butterfl/, { key: 'butterfly', label: 'Butterflies' }],
+  [/hummingbird/, { key: 'hummingbird', label: 'Hummingbirds' }],
+  [/larval host|caterpillar|(^|[^a-z])lep([^a-z]|$)/, { key: 'caterpillar', label: 'Feeds caterpillars' }],
+  [/moth/, { key: 'moth', label: 'Moths' }],
+  [/hoverfl/, { key: 'hoverfly', label: 'Hoverflies' }],
+  [/goldfinch|(^|[^g])birds?([^a-z]|$)|seed source/, { key: 'bird', label: 'Birds' }],
+]
+
+const TRAITS: [RegExp, Trait][] = [
+  [/drought/, { key: 'drought', label: 'Drought-tolerant' }],
+  [/evergreen/, { key: 'evergreen', label: 'Evergreen' }],
+  [/edible|(^|[^a-z])tea([^a-z]|$)|berries|fruit|culinary|herbal/, { key: 'edible', label: 'Edible' }],
+  [/self-?seed|self-?sow/, { key: 'seeds', label: 'Self-seeds' }],
+  [/nitrogen/, { key: 'nitrogen', label: 'Fixes nitrogen' }],
+  [/shade/, { key: 'shade', label: 'Takes part shade' }],
+  [/wet[- ]feet|moisture[- ]loving|moist soil/, { key: 'wet', label: 'Likes wet soil' }],
+  [/cavity|pithy|hollow/, { key: 'nest', label: 'Nesting stems for bees' }],
+  [/seedhead/, { key: 'seedheads', label: 'Winter seedheads' }],
+]
+
+// What the plant feeds and what it's like, for the icon rows on its page. Who it
+// feeds comes from the notes' Pollinators column (or the "why" when there's none).
+export function plantTraits(plant: Pick<FullPlant, 'pollinators' | 'why' | 'native'>) {
+  const who = (plant.pollinators ?? plant.why ?? '').toLowerCase()
+  const what = (plant.why ?? '').toLowerCase()
+  const pollinators = POLLINATORS.filter(([re]) => re.test(who)).map(([, t]) => t)
+  const traits = [
+    ...(plant.native ? [{ key: 'native', label: 'BC native' }] : []),
+    ...TRAITS.filter(([re]) => re.test(what)).map(([, t]) => t),
+  ]
+  return { pollinators, traits }
+}
+
+// "Pithy Lamiaceae stems = cavity-nesting habitat; triple pollinator" ->
+// ["Pithy Lamiaceae stems: cavity-nesting habitat", "Triple pollinator"].
+export function whyBullets(why: string | null) {
+  return (why ?? '')
+    .split(/;\s*/)
+    .map((s) => s.replace(/\s+=\s+/g, ': ').trim())
+    .filter(Boolean)
+    .map((s) => s[0].toUpperCase() + s.slice(1))
+}
+
+const NOT_ON: Record<string, string> = {
+  biochar: 'biochar',
+  castings: 'worm castings',
+  compost: 'rich compost (Sea Soil, manure)',
+}
+
+// The rules for a plant as two short lines: what to do, and what not to use. The
+// full rules, with their reasons and sites, stay one tap away.
+export function summarizeRules(rules: Rule[]) {
+  const doLines: string[] = []
+  const dontLines: string[] = []
+  const add = (list: string[], line: string) => {
+    const l = line.replace(/\.$/, '').trim()
+    if (l && !list.some((x) => x.toLowerCase() === l.toLowerCase())) list.push(l)
+  }
+  const specific = (r: Rule) => Boolean(r.site_id || r.tag || r.plant_id || r.kind)
+  // "Biochar goes in planting holes only" isn't needed once a rule says no biochar here.
+  const noBiocharHere = rules.some((r) => r.topic === 'biochar' && r.verdict === 'no' && specific(r))
+  for (const r of rules) {
+    const sentences = r.text.split(/(?<=\.)\s+/)
+    if (r.verdict === 'no') {
+      if (r.topic === 'biochar' && !specific(r)) {
+        if (!noBiocharHere) add(doLines, 'Biochar only in planting holes and potting mix, not on the bed')
+        continue
+      }
+      add(dontLines, NOT_ON[r.topic] ?? sentences[0].replace(/^No /, '').replace(/:.*/, ''))
+    } else {
+      const first = sentences.find((s) => !/^never /i.test(s))
+      if (first) add(doLines, first)
+    }
+    for (const s of sentences) {
+      if (/^never /i.test(s)) add(dontLines, s.replace(/^never /i, ''))
+      if (/^use /i.test(s)) add(doLines, s.replace(/^use /i, '').replace(/^./, (c) => c.toUpperCase()))
+    }
+  }
+  return { doLines, dontLines }
+}
+
+// The Plants list: what's in the ground (marked planted, or logged and not since
+// died), what's on a shopping list and not planted yet, and the rest.
+export function plantsByPlace(
+  plants: FullPlant[],
+  items: { plant_id: string; status: string }[],
+  log: { plant_id: string; action: string; happened_on: string }[],
+) {
+  const latest = new Map<string, string>()
+  for (const e of [...log].sort((a, b) => a.happened_on.localeCompare(b.happened_on))) latest.set(e.plant_id, e.action)
+  const inGround = new Set<string>()
+  for (const [id, action] of latest) if (action !== 'died') inGround.add(id)
+  for (const i of items) if (i.status === 'planted' && latest.get(i.plant_id) !== 'died') inGround.add(i.plant_id)
+  const onLists = new Set(items.filter((i) => i.status === 'to buy' || i.status === 'bought').map((i) => i.plant_id))
+  const byName = (a: FullPlant, b: FullPlant) => a.common.localeCompare(b.common)
+  return {
+    inGround: plants.filter((p) => inGround.has(p.id)).sort(byName),
+    onLists: plants.filter((p) => !inGround.has(p.id) && onLists.has(p.id)).sort(byName),
+    others: plants.filter((p) => !inGround.has(p.id) && !onLists.has(p.id)).sort(byName),
+  }
 }

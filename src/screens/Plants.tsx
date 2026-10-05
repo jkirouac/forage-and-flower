@@ -2,19 +2,20 @@ import { useState } from 'react'
 import { useCatalogue } from '../lib/catalogue'
 import { useSeasons } from '../lib/seasons'
 import { seasonLabel, type PlanItem } from '../lib/plan'
-import { matchesSearch, splitPlants, type FullPlant, type Planting } from '../lib/plants'
+import { matchesSearch, plantsByPlace, type FullPlant, type Planting } from '../lib/plants'
 import { shortDate } from '../lib/season'
 
-// Plants: your plants first (on a list, or in the planting log), then the rest of
-// the catalogue. Each opens its plant page.
+// Plants: what's in the ground, what's on the shopping lists, then the rest of the
+// catalogue. Each opens its plant page.
 export default function Plants({ userId }: { userId: string }) {
   const { data, error, reload } = useCatalogue(userId)
   const seasons = useSeasons(userId)
   const [q, setQ] = useState('')
 
   const items = seasons.data?.items ?? []
-  const yoursIds = new Set([...items.map((i) => i.plant_id), ...(data?.plantings ?? []).map((p) => p.plant_id)])
-  const { yours, others } = data ? splitPlants(data.plants, yoursIds) : { yours: [], others: [] }
+  const { inGround, onLists, others } = data
+    ? plantsByPlace(data.plants, items, data.plantings)
+    : { inGround: [], onLists: [], others: [] }
   const filter = (list: FullPlant[]) => list.filter((p) => matchesSearch(p, q))
 
   return (
@@ -45,13 +46,29 @@ export default function Plants({ userId }: { userId: string }) {
             <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Common or Latin name" />
           </label>
           <PlantList
-            title="In our garden"
-            plants={filter(yours)}
+            title="In the ground"
+            about="Planted: marked planted on a shopping list, or recorded in a plant's planting log."
+            plants={filter(inGround)}
             items={items}
             plantings={data.plantings}
-            empty={q ? 'None of ours match.' : 'Nothing on a list or in the log yet.'}
+            empty={q ? 'None of these match.' : 'Nothing recorded as planted yet. Mark plants planted in Shopping, or record a planting on a plant page.'}
           />
-          <PlantList title="More plants" plants={filter(others)} items={items} plantings={data.plantings} empty={q ? 'No others match.' : ''} />
+          <PlantList
+            title="On our shopping lists"
+            about="To buy or bought, and not planted yet."
+            plants={filter(onLists)}
+            items={items}
+            plantings={data.plantings}
+            empty={q ? 'None of these match.' : 'Nothing waiting to be bought or planted.'}
+          />
+          <PlantList
+            title="More plants"
+            about="The rest of the catalogue, from our ranked plant lists."
+            plants={filter(others)}
+            items={items}
+            plantings={data.plantings}
+            empty={q ? 'None of these match.' : ''}
+          />
         </>
       )}
     </>
@@ -60,12 +77,14 @@ export default function Plants({ userId }: { userId: string }) {
 
 function PlantList({
   title,
+  about,
   plants,
   items,
   plantings,
   empty,
 }: {
   title: string
+  about: string
   plants: FullPlant[]
   items: PlanItem[]
   plantings: Planting[]
@@ -74,7 +93,10 @@ function PlantList({
   if (plants.length === 0 && !empty) return null
   return (
     <section className="block">
-      <h2 className="label">{title}</h2>
+      <div>
+        <h2 className="label">{title}</h2>
+        <p className="group-sub">{about}</p>
+      </div>
       {plants.length === 0 ? (
         <p className="empty">{empty}</p>
       ) : (

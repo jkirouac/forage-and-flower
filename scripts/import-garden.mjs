@@ -642,6 +642,111 @@ const acceptRes = (decisions.accept_inferred ?? []).map((r) => new RegExp(r, 'i'
 const acceptedCount = report.inferred.filter((n) => acceptRes.some((re) => re.test(n))).length
 report.inferred = report.inferred.filter((n) => !acceptRes.some((re) => re.test(n)))
 
+// ---------- plant pages: size, pollinators, photo (added 2026-10-06) ----------
+
+// Size and Pollinators from the ranked lists, matched like rank and "why" above.
+const DETAIL_FILES = ['plants/perennial-flowers.md', 'plants/trees-shrubs.md', 'plants/perennial-herbs.md', 'plants/ferns-foliage.md']
+const detailRows = DETAIL_FILES.flatMap((file) =>
+  tables(read(file))
+    .filter((t) => t.headers.includes('rank') && (t.headers.includes('size (h×w)') || t.headers.includes('pollinators')))
+    .flatMap((t) =>
+      t.rows.map((r) => ({
+        name: plain([r.plant, r.variety].filter(Boolean).join(' ')).text.replace('★', '').trim(),
+        size: plain(r['size (h×w)'] ?? '').text,
+        pollinators: plain(r.pollinators ?? '').text,
+        image: r.image ?? '',
+      })),
+    ),
+)
+const findDetail = (p) =>
+  detailRows.find(
+    (x) =>
+      x.name &&
+      ((p.latin && x.name.toLowerCase().includes(p.latin.toLowerCase())) ||
+        x.name.toLowerCase().startsWith(p.common.toLowerCase()) ||
+        x.name.toLowerCase().includes(`(${p.common.toLowerCase()})`)),
+  )
+
+// Photos: the notes' Wikimedia image where there is one, otherwise the Wikipedia
+// page's image for the Latin name, then the common name, then the genus. Author and
+// licence come from the Commons file. Lookups are cached; PHOTO_REFRESH=1 redoes them.
+const photoCachePath = path.join(outDir, 'photo-cache.json')
+const photoCache = !process.env.PHOTO_REFRESH && fs.existsSync(photoCachePath) ? JSON.parse(fs.readFileSync(photoCachePath, 'utf8')) : {}
+const UA = { 'User-Agent': 'forage-and-flower-importer/1.0 (https://github.com/jkirouac/forage-and-flower)' }
+const getJson = async (url) => {
+  const res = await fetch(url, { headers: UA })
+  return res.ok ? res.json() : null
+}
+// Wikimedia adds tracking parameters to image addresses; the file is the path's last part.
+const cleanUrl = (u) => {
+  const url = new URL(u)
+  url.search = ''
+  return url.toString()
+}
+const fileOf = (u) => decodeURIComponent(new URL(u).pathname.split('/').pop())
+const stripHtml = (s) => (s ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
+
+async function commonsFile(fileName) {
+  const q = new URLSearchParams({
+    action: 'query',
+    titles: `File:${fileName}`,
+    prop: 'imageinfo',
+    iiprop: 'url|extmetadata',
+    iiurlwidth: '330',
+    format: 'json',
+  })
+  const j = await getJson(`https://commons.wikimedia.org/w/api.php?${q}`)
+  const info = j && Object.values(j.query?.pages ?? {})[0]?.imageinfo?.[0]
+  if (!info?.thumburl) return null
+  const meta = info.extmetadata ?? {}
+  const artist = stripHtml(meta.Artist?.value) || 'Unknown author'
+  const licence = stripHtml(meta.LicenseShortName?.value) || 'see file page'
+  return { url: cleanUrl(info.thumburl), page: info.descriptionurl, credit: `${artist}, ${licence}` }
+}
+
+async function wikipediaImage(title) {
+  const j = await getJson(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}`)
+  if (!j || j.type === 'disambiguation' || !j.originalimage?.source) return null
+  return fileOf(j.originalimage.source)
+}
+
+async function findPhoto(p, detail) {
+  // The notes' image: [![Alt](thumb)](https://upload.wikimedia.org/.../File.jpg)
+  const fromNotes = detail?.image.match(/\]\((https:\/\/upload\.wikimedia\.org\/[^)\s]+)\)\s*$/)?.[1]
+  if (fromNotes) {
+    const file = await commonsFile(fileOf(fromNotes))
+    if (file) return { ...file, found: 'notes' }
+  }
+  const tries = [
+    [p.latin, 'latin'],
+    [p.common.replace(/'[^']*'|\([^)]*\)/g, '').trim(), 'common'],
+    [p.latin?.split(' ')[0], 'genus'],
+  ]
+  for (const [title, how] of tries) {
+    if (!title) continue
+    const fileName = await wikipediaImage(title)
+    if (!fileName) continue
+    const file = await commonsFile(fileName)
+    if (file) return { ...file, found: how }
+  }
+  return null
+}
+
+const photoReport = { notes: [], latin: [], common: [], genus: [], missing: [] }
+for (const p of plants.values()) {
+  const detail = findDetail(p)
+  p.size = detail?.size || null
+  p.pollinators = detail?.pollinators || null
+  if (!(p.key in photoCache)) photoCache[p.key] = await findPhoto(p, detail)
+  const photo = photoCache[p.key]
+  p.photo = photo ? { url: photo.url, page: photo.page, credit: photo.credit } : null
+  const cultivar = /'[^']+'/.test(p.common) && photo && photo.found !== 'notes' ? ' (the species, not this cultivar)' : ''
+  photoReport[photo ? photo.found : 'missing'].push(`${p.common}${cultivar}`)
+}
+fs.mkdirSync(outDir, { recursive: true })
+fs.writeFileSync(photoCachePath, JSON.stringify(photoCache, null, 2) + '\n')
+const detailCount = [...plants.values()].filter((p) => p.size || p.pollinators).length
+
 // ---------- write ----------
 
 const out = {
@@ -677,6 +782,12 @@ fs.writeFileSync(
     section('Inferred', report.inferred, 'The script filled these in. Check they are right.'),
     section('Reminder email vs schedule', report.mismatch, 'In the reminder email but not in schedule.md. Add these to the app, or drop them?'),
     section('Skipped', report.skipped, 'Left out on purpose.'),
+    `## Plant pages\n\nSize or pollinators found for ${detailCount} of ${plants.size} plants.\n`,
+    section('Photos missing', photoReport.missing, 'No photo found in the notes or on Wikipedia. These show a drawn icon instead.'),
+    section('Photos from the genus only', photoReport.genus, 'Wikipedia had no page for the species, so the photo shows a relative. Check these look right.'),
+    section('Photos by common name', photoReport.common, 'Found by the common name. Check these are the right plant.'),
+    section('Photos by Latin name', photoReport.latin, 'From the Wikipedia page for the species.'),
+    section('Photos from the notes', photoReport.notes, 'The image already linked in perennial-flowers.md.'),
   ].join('\n'),
 )
 

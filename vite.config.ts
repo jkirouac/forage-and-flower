@@ -24,7 +24,8 @@ function contentSecurityPolicy(): Plugin {
           "default-src 'self'",
           `script-src 'self' ${inline.join(' ')}`,
           "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: blob:",
+          // Plant photos come from Wikimedia Commons.
+          "img-src 'self' data: blob: https://upload.wikimedia.org https://thumb.wikimedia.org",
           "font-src 'self' data:",
           "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
           "worker-src 'self'",
@@ -69,6 +70,18 @@ export default defineConfig({
       workbox: {
         navigateFallback: `${base}index.html`,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Plant photos you've looked at stay on the phone, so they show without signal.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/(upload|thumb)\.wikimedia\.org\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'plant-photos',
+              expiration: { maxEntries: 150, maxAgeSeconds: 60 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
   ],

@@ -19,6 +19,11 @@ const plant = (common: string, extra: Partial<FullPlant> = {}): FullPlant => ({
   threat_reason: null,
   rank: null,
   why: null,
+  size: null,
+  pollinators: null,
+  photo_url: null,
+  photo_page: null,
+  photo_credit: null,
   ...extra,
 })
 
