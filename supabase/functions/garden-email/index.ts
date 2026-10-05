@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
   const [garden, members, tasks, checks, items, plants, nurseries] = await Promise.all([
     db.from('gardens').select('name, region, zone').eq('id', GARDEN_ID).single(),
     db.from('members').select('user_id, initials').eq('garden_id', GARDEN_ID),
-    db.from('tasks').select('id, section, title, detail, link, month, every_month, position').eq('garden_id', GARDEN_ID).order('position'),
+    db.from('tasks').select('id, section, title, detail, link, month, every_month, position, year').eq('garden_id', GARDEN_ID).order('position'),
     db
       .from('task_checks')
       .select('task_id, year, month, outcome, done_by, done_at, cleared_at')

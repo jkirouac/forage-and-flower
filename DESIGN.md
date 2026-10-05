@@ -22,6 +22,7 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 | Edibles | Included alongside natives and pollinator plants. |
 | Name | **Forage & Flower** (2026-10-03). A florist in Newnan, Georgia uses the same name; fine for a private app, but check trademarks and the Play Store before any public release. |
 | Direction | Field Guide look, Calm Utility interactions, year ring on Pollinator picks only (2026-10-03). |
+| Voice notes | Speak a note on This month; Claude tidies it and sorts it into one-off tasks and notes; you check it before it's saved (2026-10-05). The phone's own speech recognition does the listening. |
 
 ## Direction
 
@@ -51,6 +52,7 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 | Kind copy, and a monthly summary against your own past: "6 natives planted this fall, up from 2 last fall." | Gentler Streak | This month, monthly email | Planned |
 | Nursery notes with a "last checked" date, so stale stock info is visible. | Calscape (and its stale-data complaints) | Plant pages, Seasons | Built (Seasons) |
 | Works with no signal in the garden; changes sync later. | An offline outbox | Everywhere | Built (This month) |
+| Talk, then tidy: say it as it comes, get it back as clean text to check. | Wispr Flow | This month (voice notes) | Built |
 
 ### Avoid
 
@@ -60,12 +62,15 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 | No treating every plant as a spring annual. | Every planner app does this. Perennials, shrubs, bulbs and fall planting are the core here. |
 | No "where to buy" that means one store. | Name the local nursery that actually stocks it. |
 | No long setup. | The garden's content is already written; the app opens full. |
-| No upsells, ads, ratings prompts or AI. | Two users, no business model yet. |
+| No upsells, ads or ratings prompts. No AI that acts on its own, and no chat: Claude only tidies a voice note, and nothing is saved until you check it. | Two users, no business model yet. AI earns its place only where it saves typing outdoors. |
 | No social feed. | GardenTags and Candide died maintaining one. |
 
 ## Screens
 
-1. **This month.** A kicker line ("OCTOBER · VICTORIA 9a"), a serif title for the season's theme ("Fall planting window"), then this month and the next two under month headers (more on request), each with Do / Plant / Buy. Tap a card to tick it; press and hold to drag it to another month, where it shows "From Oct". Plant names in the title link to their pages; the small arrow opens the note. **Buy** comes from the Seasons list being shopped for (fall Sep–Nov, spring Feb–May), one card per nursery that opens to its plants; ticking one marks it bought. Chips filter: All · Do · Plant · Buy. "Plant now" cards: Planned.
+1. **This month.** A kicker line ("OCTOBER · VICTORIA 9a"), a serif title for the season's theme ("Fall planting window"), then this month and the next two under month headers (more on request), each with Do / Plant / Buy. Tap a card to tick it; press and hold to drag it to another month, where it shows "From Oct". Plant names in the title link to their pages; the small arrow opens the note. **Buy** comes from the Seasons list being shopped for (fall Sep–Nov, spring Feb–May), one card per nursery that opens to its plants; ticking one marks it bought. Chips filter: All · Do · Plant · Buy · Notes. "Plant now" cards: Planned.
+   - **Voice notes.** A round fir-green microphone sits above the tab bar (hidden while a card is dragged). Tapping it opens a sheet that listens straight away: the words appear large in Newsreader as you speak, settled words in ink and the guess still forming in muted italic. **Done** sends them to Claude ("Tidying your note…"), which comes back with one or more items to check. Each item has one choice row (Do · Plant · Buy · Note), a month (this one and the next eleven), the text to edit, the plants it links to, and any garden rule it clashes with in the ruled box ("Site 4 is a lean site: no castings."; never blocks saving). "What you said" keeps the raw words. **Save to November** (or **Save 3 items**) is pinned at the bottom; the notice after it has Undo. With no signal or no answer: "Couldn't tidy this without signal. Save what you said as a note in October?" Microphone refused or not supported: the sheet opens on writing instead, with the same tidy.
+   - **One-off tasks** from voice notes are ordinary cards (tick, drag, plant links, clear); their note adds "What you said" and **Remove this card**. Imported tasks can't be removed.
+   - **Notes** sit after Do / Plant / Buy in their month: serif text with plant names linked, a lichen rule down the side like a margin note, no circle because they aren't ticked, and the initials-and-date chip. The arrow opens "What you said" and **Remove this note**.
 2. **Shopping** (was Seasons, renamed October 2026). Fall and spring lists, grouped by nursery. One card per plant with its sites inside ("Great Camas · × 49 · 5 sites"): its circle buys every site at once, and opening it shows each site with its own circle, quantity and editor. Status runs to buy, bought, planted (or skipped).
 3. **Plants.** Three sections, each with a line saying what it holds: **In the ground** (marked planted, or in the planting log), **On our shopping lists** (to buy or bought, not planted yet) and **More plants** (the rest of the catalogue), above them a search box and filter chips: **Feeds** (Bees, Butterflies, Hummingbirds, Caterpillars, Humans) and **Good to know** (Full sun, Drought-tolerant, Nesting stems, BC native, Evergreen, Part shade; sun comes from the Sun column in the ranked plant lists). Each plant row shows small icons for who it feeds. A plant page holds, top to bottom: a photo with its credit (or a drawn icon for its kind), common and Latin name, **Feeds** and **Good to know** as small icon chips (pollinators from the notes' Pollinators column; BC native, drought-tolerant, edible and so on from the notes; size), **Why it's here** as short bullets, the 12-month bar with a legend, **Planting it** as one Do line and one Don't-use line (the full rules, with reasons and sites, one tap away), **Shopping and planting** as one plain line per season and nursery, and the planting log.
 4. **Pollinator picks.** Plants ranked by support for threatened species, led by the threat-status tiebreaker in `perennial-flowers.md`. The year ring sits at the top, with a plain list below it for accessibility. **Built:** all 48 ranked plants; the ring's outer band is the rubric's critical windows (Dec–Mar winter, Feb–Apr emerging queens, Oct–Dec late season) and its petals the picks in flower each month, for our garden or all picks.

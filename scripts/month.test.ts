@@ -1,7 +1,7 @@
 // node --test scripts/month.test.ts
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMonth, openCount, previousMonth, nextMonth, upcomingMonths, shownItems, pushOrigin, moveTicks, type Check, type Task } from '../src/lib/month.ts'
+import { buildMonth, openCount, previousMonth, nextMonth, upcomingMonths, shownItems, pushOrigin, moveTicks, notesFor, type Check, type Task } from '../src/lib/month.ts'
 
 const task = (id: string, extra: Partial<Task> = {}): Task => ({
   id,
@@ -132,4 +132,27 @@ test('moving it back removes those pushes, but never before where it started', (
   ])
   assert.equal(moveTicks(origin, { year: 2026, month: 12 }, { year: 2026, month: 9 }), null)
   assert.deepEqual(moveTicks(origin, { year: 2026, month: 12 }, { year: 2026, month: 12 }), [])
+})
+
+test('a one-off task shows in its own month of its own year only', () => {
+  const tasks = [task('mulch', { section: 'buy', month: 11, year: 2026 })]
+  assert.deepEqual(buildMonth(tasks, [], 2026, 11).buy.map((i) => i.task.id), ['mulch'])
+  assert.deepEqual(buildMonth(tasks, [], 2027, 11).buy, [])
+  assert.deepEqual(buildMonth(tasks, [], 2026, 10).buy, [])
+})
+
+test('a one-off task moved on shows in the next month, even across the new year', () => {
+  const tasks = [task('mulch', { month: 12, year: 2026 })]
+  const list = buildMonth(tasks, [check('mulch', 2026, 12, 'pushed')], 2027, 1)
+  assert.deepEqual(list.do.map((i) => [i.task.id, i.pushedFrom]), [['mulch', 12]])
+  assert.deepEqual(moveTicks({ year: 2026, month: 12 }, { year: 2026, month: 12 }, { year: 2027, month: 2 }), [
+    { year: 2026, month: 12, outcome: 'pushed' },
+    { year: 2027, month: 1, outcome: 'pushed' },
+  ])
+})
+
+test("a month's notes, oldest first", () => {
+  const note = (id: string, year: number, month: number, at: string) => ({ id, year, month, text: id, spoken: null, written_by: 'u1', written_at: at })
+  const notes = [note('b', 2026, 10, '2026-10-05T10:00:00Z'), note('a', 2026, 10, '2026-10-01T10:00:00Z'), note('x', 2027, 10, '2027-10-01T10:00:00Z')]
+  assert.deepEqual(notesFor(notes, 2026, 10).map((n) => n.id), ['a', 'b'])
 })

@@ -1,7 +1,8 @@
 // What This month shows, worked out from the garden's tasks and ticks. Pure, so the
 // rules can be tested without a database (scripts/month.test.ts).
 //
-// - A task belongs to its month every year, or to every month.
+// - A task belongs to its month every year, or to every month. A one-off task (a
+//   voice note) belongs to its month in one year only.
 // - A tick is per task per month: done, or pushed to the next month.
 // - A task pushed last month shows this month as well, marked where it came from.
 //   Pushed tasks are never shown as overdue (DESIGN.md).
@@ -18,6 +19,19 @@ export interface Task {
   month: number | null
   every_month: boolean
   position: number
+  year?: number | null // set on one-off tasks; null or missing means every year
+  spoken?: string | null // what was said, for tasks added by voice
+}
+
+// A journal note under a month ("Camas by the path came up thin").
+export interface Note {
+  id: string
+  year: number
+  month: number
+  text: string
+  spoken: string | null
+  written_by: string | null
+  written_at: string
 }
 
 export interface Check {
@@ -60,7 +74,7 @@ export function buildMonth(tasks: Task[], checks: Check[], year: number, month: 
   const list: MonthList = { do: [], plant: [], buy: [] }
 
   for (const task of tasks) {
-    const own = task.every_month || task.month === month
+    const own = task.every_month || (task.month === month && (task.year == null || task.year === year))
     const pushed = byKey.get(checkKey(task.id, prev.year, prev.month))?.outcome === 'pushed'
     if (!own && !pushed) continue
     list[task.section]?.push({
@@ -77,6 +91,11 @@ export function buildMonth(tasks: Task[], checks: Check[], year: number, month: 
     list[section].sort((a, b) => rank(a) - rank(b) || a.task.position - b.task.position || a.task.title.localeCompare(b.task.title))
   }
   return list
+}
+
+// A month's notes, oldest first, as a notebook reads.
+export function notesFor(notes: Note[], year: number, month: number) {
+  return notes.filter((n) => n.year === year && n.month === month).sort((a, b) => a.written_at.localeCompare(b.written_at))
 }
 
 // How many of the month's tasks are still open (not done, not pushed on).

@@ -1103,3 +1103,217 @@ h1 {
     animation: none !important;
   }
 }
+
+/* Voice notes (VoiceNote.tsx) */
+
+/* Pinned above the tab bar: the notice, the mic and Clear checked off stack here,
+   so they never sit on top of one another. */
+.dock {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 82px);
+  z-index: 2;
+  display: grid;
+  gap: 10px;
+  pointer-events: none;
+}
+.dock > * {
+  pointer-events: auto;
+}
+.dock > .move-notice,
+.dock > .clear-bar {
+  position: static;
+}
+.mic-button {
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+  cursor: pointer;
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.35);
+}
+.sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  display: grid;
+  gap: 16px;
+  padding: 20px 16px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  border-radius: 18px 18px 0 0;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  animation: sheet-up 0.2s ease-out;
+}
+.sheet:focus {
+  outline: none;
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+.sheet-title {
+  margin: 0;
+  font: 600 1.3rem/1.2 var(--display);
+}
+.sheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+/* Save stays in reach however many items there are to check. */
+.drafts ~ .sheet-actions {
+  position: sticky;
+  bottom: calc(-20px - env(safe-area-inset-bottom, 0px));
+  margin: 0 -16px calc(-20px - env(safe-area-inset-bottom, 0px));
+  padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+
+/* What you're saying, as you say it: settled words in ink, the guess still
+   forming in muted italic, like a pencil draft in a field notebook. */
+.dictation {
+  margin: 0;
+  min-height: 4.2em;
+  font: 400 1.55rem/1.35 var(--display);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.dictation[data-dim] {
+  font-size: 1.15rem;
+  color: var(--muted);
+}
+.dictation-forming {
+  color: var(--muted);
+  font-style: italic;
+}
+.listen-stop {
+  position: relative;
+  min-height: 52px;
+  padding: 0 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: 600 1rem var(--body);
+  cursor: pointer;
+}
+.listen-ring {
+  position: absolute;
+  inset: -5px;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  animation: listening 1.6s ease-in-out infinite;
+}
+@keyframes listening {
+  50% {
+    transform: scale(1.06);
+    opacity: 0.35;
+  }
+}
+
+.note-field {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 400 1rem/1.45 var(--body);
+  resize: vertical;
+}
+.drafts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.draft {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.draft[data-kind='note'] {
+  border-left: 3px solid var(--lichen);
+}
+.draft-row {
+  display: grid;
+  gap: 10px;
+}
+.draft-month {
+  max-width: none;
+}
+.draft-month select {
+  min-height: 36px;
+}
+.spoken summary {
+  padding: 10px 0;
+  color: var(--accent);
+  cursor: pointer;
+}
+.spoken p {
+  margin: 0 0 4px;
+  font: italic 400 1rem/1.4 var(--display);
+  color: var(--muted);
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A journal note on This month: no circle, since it isn't ticked; a lichen rule
+   down the side, like a margin note. */
+.note-row {
+  list-style: none;
+}
+.note-face {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0 4px 14px;
+  border-left: 3px solid var(--lichen);
+}
+.note-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+}
+.note-text {
+  margin: 0;
+  font: 400 1.08rem/1.45 var(--display);
+}
+.note-row .task-more {
+  padding-left: 17px;
+  border: 0;
+  border-left: 3px solid var(--lichen);
+  background: none;
+}

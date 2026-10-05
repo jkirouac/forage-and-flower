@@ -22,7 +22,7 @@ After one fall and one spring of use:
 
 - Photos (decided: none for now)
 - Push notifications (the monthly email covers reminders)
-- AI of any kind, including the photo-based designs planned for the larger garden planner
+- AI beyond tidying voice notes (added October 2026, see DESIGN.md), including the photo-based designs planned for the larger garden planner
 - Other gardens or other users
 - Live nursery stock. Nursery notes carry a "last checked" date instead
 - Weather, frost alerts and watering schedules
@@ -52,6 +52,7 @@ A small installable web app with its data in a shared Supabase project.
 | Migrations | Managed outside this repo, with the shared project's other migrations. This repo never pushes to the shared project. |
 | Sign-in | Email and password, using the shared project's login (decided 2026-10-03). |
 | Fonts | Newsreader and Public Sans, bundled with the app. |
+| Voice notes | The phone's own speech recognition turns speech into text. A function in the Supabase project (`supabase/functions/garden-note`) sends that text, with the garden's plant names, sites and rules, to Claude, which tidies it and sorts it into one-off tasks and notes. It runs as the signed-in person, so row-level security limits it to their own garden; the Anthropic key is a project secret. Nothing is saved until the phone has shown the result (built October 2026). |
 | Monthly email | Keeps the existing scheduled GitHub job and Gmail sending. A small function inside the Supabase project builds the email from the app's data; the job fetches it with a token that can do nothing else (decided 2026-10-03, built 2026-10-07). The project's master key never leaves Supabase. |
 
 **Timing:** the `garden` schema goes in after another app's move into the shared project finishes, so two changes don't overlap.
@@ -70,7 +71,8 @@ All tables live in the `garden` schema. Row-level security: a person can read an
 | `nurseries` | Name, location, website, phone, what they're good for, notes, last checked. |
 | `plan_items` | A plant at a site for a season: quantity, status (to buy, bought, planted, skipped), nursery, notes. |
 | `plantings` | What happened, where and when: planted, sown, moved, divided, died. Who did it. |
-| `tasks` | Monthly jobs under Do, Plant or Buy. Recurring ones (the Worm Wigwam crank) repeat every month. Can point at a plant, site or plan item. |
+| `tasks` | Monthly jobs under Do, Plant or Buy. Recurring ones (the Worm Wigwam crank) repeat every month. Can point at a plant, site or plan item. A one-off task from a voice note has a year, and keeps what was said. |
+| `notes` | Journal notes from voice notes: year, month, the tidied text, what was said, who and when. |
 | `task_checks` | Each tick: which task, which year, who, when. Also "pushed to next month". |
 
 ## Moving your content in

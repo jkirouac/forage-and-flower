@@ -3,8 +3,9 @@
 
 import { useCallback, useState } from 'react'
 import { supabase } from './supabase'
-import { checkKey, type Check, type Outcome, type Task } from './month'
+import { checkKey, type Check, type Note, type Outcome, type Task } from './month'
 import { queue, readOps, type Op } from './outbox'
+import { toOps, type DraftItem } from './notes'
 import { CACHES, findGardenId, readJson, useLiveTable, useLoadWhenBack, usePending, writeJson } from './local'
 
 export interface Garden {
@@ -12,6 +13,7 @@ export interface Garden {
   members: Record<string, string> // user id -> initials
   tasks: Task[]
   checks: Check[]
+  notes: Note[]
   // True when the server couldn't be reached and this is what the phone last saw.
   fromPhone?: boolean
 }
@@ -46,17 +48,29 @@ function applyTicks(checks: Check[], ops: Op[]): Check[] {
   return [...byKey.values()]
 }
 
+// Unsent voice notes on this phone: one-off tasks and notes added or removed.
+function applyNotes(g: Garden, ops: Op[]): Garden {
+  let { tasks, notes } = g
+  for (const op of ops) {
+    if (op.kind === 'task-insert' && !tasks.some((t) => t.id === op.row.id)) tasks = [...tasks, op.row as unknown as Task]
+    else if (op.kind === 'task-delete') tasks = tasks.filter((t) => t.id !== op.id)
+    else if (op.kind === 'note-insert' && !notes.some((n) => n.id === op.row.id)) notes = [...notes, op.row as unknown as Note]
+    else if (op.kind === 'note-delete') notes = notes.filter((n) => n.id !== op.id)
+  }
+  return { ...g, tasks, notes, checks: applyTicks(g.checks, ops) }
+}
+
 // Ticks from last year on, which covers this month and anything pushed into it.
 export async function loadGarden(userId: string, year: number): Promise<Garden> {
   try {
     const gardenId = await findGardenId(userId)
-    if (!gardenId) return { gardenId: null, members: {}, tasks: [], checks: [] }
+    if (!gardenId) return { gardenId: null, members: {}, tasks: [], checks: [], notes: [] }
 
-    const [members, tasks, checks] = await Promise.all([
+    const [members, tasks, checks, notes] = await Promise.all([
       supabase.from('members').select('user_id, initials').eq('garden_id', gardenId),
       supabase
         .from('tasks')
-        .select('id, section, title, detail, link, month, every_month, position')
+        .select('id, section, title, detail, link, month, every_month, position, year, spoken')
         .eq('garden_id', gardenId)
         .order('position'),
       supabase
@@ -64,20 +78,28 @@ export async function loadGarden(userId: string, year: number): Promise<Garden> 
         .select('task_id, year, month, outcome, done_by, done_at, cleared_at')
         .eq('garden_id', gardenId)
         .gte('year', year - 1),
+      supabase
+        .from('notes')
+        .select('id, year, month, text, spoken, written_by, written_at')
+        .eq('garden_id', gardenId)
+        .gte('year', year - 1),
     ])
-    if (members.error || tasks.error || checks.error) throw members.error ?? tasks.error ?? checks.error
+    const error = members.error ?? tasks.error ?? checks.error ?? notes.error
+    if (error) throw error
 
     const garden: Garden = {
       gardenId,
-      members: Object.fromEntries(members.data.map((m) => [m.user_id as string, m.initials as string])),
+      members: Object.fromEntries((members.data ?? []).map((m) => [m.user_id as string, m.initials as string])),
       tasks: tasks.data as Task[],
       checks: checks.data as Check[],
+      notes: notes.data as Note[],
     }
     writeJson(CACHES.garden, { ...garden, userId })
-    return { ...garden, checks: applyTicks(garden.checks, readOps()) }
+    return applyNotes(garden, readOps())
   } catch (error) {
     const cached = readJson<(Garden & { userId: string }) | null>(CACHES.garden, null)
-    if (cached?.userId === userId) return { ...cached, checks: applyTicks(cached.checks, readOps()), fromPhone: true }
+    // A cache from before notes existed has none.
+    if (cached?.userId === userId) return { ...applyNotes({ ...cached, notes: cached.notes ?? [] }, readOps()), fromPhone: true }
     throw error
   }
 }
@@ -99,6 +121,26 @@ export function useGarden(userId: string, year: number) {
   useLoadWhenBack(reload)
   const gardenId = garden?.gardenId
   useLiveTable('task_checks', gardenId, reload)
+  useLiveTable('tasks', gardenId, reload)
+  useLiveTable('notes', gardenId, reload)
+
+  const change = useCallback((ops: Op[]) => {
+    setGarden((prev) => (prev ? applyNotes(prev, ops) : prev))
+    for (const op of ops) void queue(op)
+  }, [])
+
+  // Saves reviewed voice-note items; returns the ids, for Undo.
+  const addItems = useCallback(
+    (items: DraftItem[], spoken: string) => {
+      if (!gardenId) return []
+      const ops = toOps(items, spoken, gardenId, userId)
+      change(ops)
+      return ops.map((o) => ('row' in o ? { kind: o.kind, id: o.row.id } : null)).filter((x) => x !== null)
+    },
+    [change, gardenId, userId],
+  )
+  const removeTask = useCallback((id: string) => change([{ kind: 'task-delete', id }]), [change])
+  const removeNote = useCallback((id: string) => change([{ kind: 'note-delete', id }]), [change])
 
   const tick = useCallback(
     (taskId: string, y: number, m: number, outcome: Outcome | null) => {
@@ -120,5 +162,5 @@ export function useGarden(userId: string, year: number) {
     [gardenId],
   )
 
-  return { garden, error, pending, reload, tick, clear }
+  return { garden, error, pending, reload, tick, clear, addItems, removeTask, removeNote }
 }

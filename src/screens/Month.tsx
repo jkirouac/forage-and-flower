@@ -6,12 +6,14 @@ import {
   buildMonth,
   moveTicks,
   nextMonth,
+  notesFor,
   pushOrigin,
   SECTIONS,
   shownItems,
   upcomingMonths,
   type Item,
   type MonthRef,
+  type Note,
   type Outcome,
   type Section,
 } from '../lib/month'
@@ -20,9 +22,12 @@ import { linkPlantNames, type FullPlant } from '../lib/plants'
 import { MONTHS, monthHeading, shortDate } from '../lib/season'
 import { clearSummary } from '../lib/clear'
 import { ClearBar, ShowCleared } from './ClearBar'
+import VoiceNote from './VoiceNote'
+import type { DraftItem } from '../lib/notes'
 
 const LABELS: Record<Section, string> = { do: 'Do', plant: 'Plant', buy: 'Buy' }
-type Filter = Section | 'all'
+type Filter = Section | 'all' | 'notes'
+const FILTERS: Filter[] = ['all', ...SECTIONS, 'notes']
 
 const EMPTY: Record<Section, string> = {
   do: 'Nothing to do this month.',
@@ -37,14 +42,15 @@ const MAX_MONTHS = 12
 // Tap a card to tick it done; press and hold a card, then drag it onto another
 // month to move it there ("From Oct"). The small arrow opens its note. Plant names
 // in a task are links to their pages. Buy comes from the Shopping list for this
-// time of year, one card per nursery.
+// time of year, one card per nursery. The mic button speaks a note: Claude tidies
+// it into one-off tasks and notes for a month (VoiceNote).
 export default function Month({ userId }: { userId: string }) {
   // The date when the screen opened; reopening the app picks up a new month.
   const [now] = useState(() => new Date())
   const year = now.getFullYear()
   const month = now.getMonth() + 1
   const { month: monthName, theme } = monthHeading(now)
-  const { garden, error, pending, reload, tick, clear } = useGarden(userId, year)
+  const { garden, error, pending, reload, tick, clear, addItems, removeTask, removeNote } = useGarden(userId, year)
   const seasons = useSeasons(userId)
   const catalogue = useCatalogue(userId)
   const [filter, setFilter] = useState<Filter>('all')
@@ -52,6 +58,22 @@ export default function Month({ userId }: { userId: string }) {
   const [count, setCount] = useState(3)
   const drag = useDragToMonth()
   const [notice, setNotice] = useState<{ text: string; undo?: () => void } | null>(null)
+  const [speaking, setSpeaking] = useState(false)
+
+  // Saves a checked voice note, with an undo.
+  function saveNote(items: DraftItem[], spoken: string) {
+    setSpeaking(false)
+    const saved = addItems(items, spoken)
+    if (saved.length === 0) return
+    const where = new Set(items.map((i) => `${i.year}-${i.month}`))
+    setNotice({
+      text: where.size === 1 ? `Saved to ${MONTHS[items[0].month - 1]}.` : `Saved ${items.length} items.`,
+      undo: () => {
+        for (const x of saved) (x.kind === 'task-insert' ? removeTask : removeNote)(x.id)
+        setNotice(null)
+      },
+    })
+  }
 
   // A notice ("Moved to December. Undo") goes after a few seconds.
   useEffect(() => {
@@ -138,9 +160,9 @@ export default function Month({ userId }: { userId: string }) {
       {garden?.gardenId && (
         <>
           <div className="choices" role="radiogroup" aria-label="Show">
-            {(['all', ...SECTIONS] as Filter[]).map((f) => (
+            {FILTERS.map((f) => (
               <button key={f} type="button" role="radio" aria-checked={filter === f} className="choice" onClick={() => setFilter(f)}>
-                {f === 'all' ? 'All' : LABELS[f]}
+                {f === 'all' ? 'All' : f === 'notes' ? 'Notes' : LABELS[f]}
               </button>
             ))}
           </div>
@@ -187,6 +209,7 @@ export default function Month({ userId }: { userId: string }) {
                           origin={pushOrigin(garden.checks, item.task.id, l.year, l.month)}
                           at={{ year: l.year, month: l.month }}
                           onSet={(outcome) => tick(item.task.id, l.year, l.month, outcome)}
+                          onRemove={item.task.year != null ? () => removeTask(item.task.id) : undefined}
                           onMove={(origin, to) => moveTask(item.task.id, origin, { year: l.year, month: l.month }, to)}
                           onHint={(text) => setNotice({ text })}
                           drag={drag}
@@ -199,6 +222,28 @@ export default function Month({ userId }: { userId: string }) {
                 </div>
               )
             })
+            const notes = notesFor(garden.notes, l.year, l.month)
+            if ((filter === 'all' && notes.length > 0) || (filter === 'notes' && (notes.length > 0 || isNow)))
+              parts.push(
+                <div key="notes" className="block">
+                  <h3 className="label">Notes</h3>
+                  {notes.length > 0 ? (
+                    <ul className="tasks">
+                      {notes.map((n) => (
+                        <NoteRow
+                          key={n.id}
+                          note={n}
+                          initials={n.written_by ? garden.members[n.written_by] : undefined}
+                          plants={plants}
+                          onRemove={() => removeNote(n.id)}
+                        />
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="empty">No notes this month. Tap the microphone to speak one.</p>
+                  )}
+                </div>,
+              )
             const shown = parts.filter(Boolean)
             return (
               <section
@@ -234,23 +279,35 @@ export default function Month({ userId }: { userId: string }) {
               </span>
             </div>
           )}
-          {notice && (
-            <p className="move-notice" role="status">
-              {notice.text}{' '}
-              {notice.undo && (
-                <button type="button" className="text-button inline" onClick={notice.undo}>
-                  Undo
-                </button>
-              )}
-            </p>
-          )}
-          <ClearBar
-            summary={clearSummary(
-              clearable.map((x) => x.item.check?.done_by ?? null),
-              userId,
+          {/* Pinned above the tab bar: notices, the mic, and Clear checked off. */}
+          <div className="dock">
+            {notice && (
+              <p className="move-notice" role="status">
+                {notice.text}{' '}
+                {notice.undo && (
+                  <button type="button" className="text-button inline" onClick={notice.undo}>
+                    Undo
+                  </button>
+                )}
+              </p>
             )}
-            onClear={clearAll}
-          />
+            {!drag.taskId && (
+              <button type="button" className="mic-button" aria-label="Speak a note" onClick={() => setSpeaking(true)}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                  <rect x="9" y="3" width="6" height="11" rx="3" />
+                  <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+                </svg>
+              </button>
+            )}
+            <ClearBar
+              summary={clearSummary(
+                clearable.map((x) => x.item.check?.done_by ?? null),
+                userId,
+              )}
+              onClear={clearAll}
+            />
+          </div>
+          {speaking && <VoiceNote today={{ year, month }} plants={plants} onSave={saveNote} onClose={() => setSpeaking(false)} />}
         </>
       )}
     </>
@@ -380,6 +437,7 @@ function TaskRow({
   origin,
   at,
   onSet,
+  onRemove,
   onMove,
   onHint,
   drag,
@@ -393,6 +451,7 @@ function TaskRow({
   origin: MonthRef
   at: MonthRef
   onSet: (outcome: Outcome | null) => void
+  onRemove?: () => void // one-off tasks only
   onMove: (origin: MonthRef, to: MonthRef) => void
   onHint: (text: string) => void
   drag: DragApi
@@ -562,7 +621,63 @@ function TaskRow({
               </select>
             </label>
           )}
-          {!task.detail && !task.link && !(pushedFrom && !check) && !done && <p className="task-detail">No note for this one.</p>}
+          {task.spoken && (
+            <details className="spoken">
+              <summary>What you said</summary>
+              <p>{task.spoken}</p>
+            </details>
+          )}
+          {!task.detail && !task.link && !task.spoken && !(pushedFrom && !check) && !done && <p className="task-detail">No note for this one.</p>}
+          {onRemove && (
+            <button type="button" className="text-button" onClick={onRemove}>
+              Remove this card
+            </button>
+          )}
+        </div>
+      )}
+    </li>
+  )
+}
+
+// A journal note under a month: the text with plant names linked, who wrote it and
+// when. The arrow opens what was said, and Remove.
+function NoteRow({ note, initials, plants, onRemove }: { note: Note; initials: string | undefined; plants: FullPlant[]; onRemove: () => void }) {
+  const [open, setOpen] = useState(false)
+  const when = new Date(note.written_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  return (
+    <li className="note-row" data-open={open || undefined}>
+      <div className="note-face">
+        <div className="note-body">
+          <p className="note-text">
+            {linkPlantNames(note.text, plants).map((part, i) =>
+              part.plantId ? (
+                <a key={i} href={`#plant/${encodeURIComponent(part.plantId)}`} className="plant-name">
+                  {part.text}
+                </a>
+              ) : (
+                <span key={i}>{part.text}</span>
+              ),
+            )}
+          </p>
+          <span className="task-meta">
+            <span className="done-by">
+              {initials ?? '?'} · {when}
+            </span>
+          </span>
+        </div>
+        <Chevron open={open} label={`${open ? 'Close' : 'Open'} the note: ${note.text}`} onClick={() => setOpen(!open)} />
+      </div>
+      {open && (
+        <div className="task-more">
+          {note.spoken && (
+            <details className="spoken">
+              <summary>What you said</summary>
+              <p>{note.spoken}</p>
+            </details>
+          )}
+          <button type="button" className="text-button" onClick={onRemove}>
+            Remove this note
+          </button>
         </div>
       )}
     </li>

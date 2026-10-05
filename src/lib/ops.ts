@@ -23,6 +23,13 @@ export type Op =
   | { kind: 'plan-clear'; ids: string[]; at: string }
   | { kind: 'planting-insert'; row: Record<string, unknown> & { id: string } }
   | { kind: 'planting-delete'; id: string }
+  // Voice notes: a one-off task, or a journal note under a month.
+  | { kind: 'task-insert'; row: Record<string, unknown> & { id: string } }
+  | { kind: 'task-delete'; id: string }
+  | { kind: 'note-insert'; row: Record<string, unknown> & { id: string } }
+  | { kind: 'note-delete'; id: string }
+
+const INSERT_FOR = { 'planting-delete': 'planting-insert', 'task-delete': 'task-insert', 'note-delete': 'note-insert' } as const
 
 // Folds a new change into what's waiting, so the outbox never sends work that a
 // later change undoes: a second tick on the same task and month replaces the
@@ -49,9 +56,16 @@ export function addOp(ops: Op[], op: Op): Op[] {
       )
       return wasNew ? rest : [...rest, op]
     }
-    case 'planting-delete': {
-      const wasNew = ops.some((o) => o.kind === 'planting-insert' && o.row.id === op.id)
-      return wasNew ? ops.filter((o) => !(o.kind === 'planting-insert' && o.row.id === op.id)) : [...ops, op]
+    case 'planting-delete':
+    case 'task-delete':
+    case 'note-delete': {
+      const insert = INSERT_FOR[op.kind]
+      const isIt = (o: Op) => o.kind === insert && 'row' in o && o.row.id === op.id
+      // A task's ticks waiting to be sent go with it.
+      const tickOf = (o: Op) => op.kind === 'task-delete' && o.kind === 'check' && o.taskId === op.id
+      const wasNew = ops.some(isIt)
+      const rest = ops.filter((o) => !isIt(o) && !(wasNew && tickOf(o)))
+      return wasNew ? rest : [...rest, op]
     }
     default:
       return [...ops, op]
