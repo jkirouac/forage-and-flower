@@ -29,7 +29,7 @@
   --accent: #7fb08f;
   --accent-ink: #1a1c18;
   --accent-soft: #2c3a30;
-  --lichen: #6f7d5a;
+  --lichen: #4a5640; /* dark enough for light initials on it */
   --bloom: #e58a72;
   --tabbar: #20231d;
 
@@ -223,6 +223,128 @@ h1 {
 .notice-error {
   background: var(--surface);
   border-left: 3px solid var(--bloom);
+}
+
+/* This month: the checklist */
+.sync-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.task {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  /* Up-and-down still scrolls; sideways drags are swipes. */
+  touch-action: pan-y;
+}
+.task-under {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.task-face {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 6px 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  transition: transform 0.15s ease-out;
+}
+.task-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: 8px 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  background: none;
+  color: var(--accent-ink);
+  cursor: pointer;
+  /* A bigger target than it looks. */
+  box-shadow: 0 0 0 8px transparent;
+}
+.task[data-state='done'] .task-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.task-body {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+  display: grid;
+  gap: 2px;
+}
+.task-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.task[data-state='done'] .task-title {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--line);
+}
+.task[data-state='pushed'] .task-title {
+  color: var(--muted);
+}
+.task-link {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.task-detail {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.task-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.done-by {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--lichen);
+  color: var(--ink);
+  font-weight: 600;
+}
+.task-push {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.text-button.inline {
+  min-height: 0;
+  font-size: inherit;
 }
 
 /* Bottom tab bar */

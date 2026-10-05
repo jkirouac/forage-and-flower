@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { setRecoveryPending, supabase, useSession } from '../lib/supabase'
 import { PasswordForm } from './NewPassword'
+import { clearLocal } from '../lib/garden'
 import { setThemePref, themePref, type ThemePref } from '../lib/theme'
 import { useInstall } from '../lib/install'
 
@@ -73,6 +74,7 @@ export default function Settings() {
           className="choice"
           onClick={() => {
             setRecoveryPending(false)
+            clearLocal()
             void supabase.auth.signOut()
           }}
         >

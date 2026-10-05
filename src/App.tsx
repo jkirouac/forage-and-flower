@@ -50,10 +50,10 @@ export default function App() {
   if (checkingLink || session === undefined) return null
   if (recoveryPending && session) return <NewPassword onDone={() => setRecoveryPending(false)} />
   if (!session) return <SignIn arrival={arrival} />
-  return <Garden />
+  return <Garden userId={session.user.id} />
 }
 
-function Garden() {
+function Garden({ userId }: { userId: string }) {
   const [screen, setScreen] = useState<Screen>(screenFromHash)
 
   useEffect(() => {
@@ -69,7 +69,7 @@ function Garden() {
   return (
     <div className="app">
       <main className="screen">
-        {screen === 'month' && <Month />}
+        {screen === 'month' && <Month userId={userId} />}
         {screen === 'seasons' && <Seasons />}
         {screen === 'plants' && <Plants />}
         {screen === 'pollinators' && <Pollinators />}

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "node --test scripts/month.test.ts",
     "preview": "vite preview",
     "icons": "node scripts/icons.mjs",
     "import:garden": "node --env-file-if-exists=.env.local scripts/import-garden.mjs",

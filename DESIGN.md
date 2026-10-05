@@ -2,7 +2,7 @@
 
 How **Forage & Flower** looks, sounds and behaves. It is a shared garden app for a two-person household, running one garden in Victoria, BC (zone 9a) from two Android phones. It is the simple first step toward a larger, photo-based garden planner.
 
-This file is a draft from October 2026. Nothing is built yet. Rules marked **Planned** are agreed but not built.
+This file started as a draft in October 2026. Rules marked **Built** are in the app; **Planned** ones are agreed but not built yet.
 
 - Background: a market scan of 14 garden, plant-care and native-plant tools, and four design directions, done before this file (October 2026).
 - Garden content it starts from: the household's own garden notes, kept outside this repo.
@@ -37,9 +37,9 @@ This file is a draft from October 2026. Nothing is built yet. Rules marked **Pla
 
 | Rule | From | Where | Status |
 |---|---|---|---|
-| One month list with three headings: **Do**, **Plant**, **Buy**. | Things 3 | This month | Planned |
-| A small "Done by J" on each finished task, with the date. | Planta, Todoist | This month, plant history | Planned |
-| Swipe right to finish; swipe left to push to next month. Pushed tasks are never shown as overdue. | Todoist | This month | Planned |
+| One month list with three headings: **Do**, **Plant**, **Buy**. | Things 3 | This month | Built |
+| A small "Done by J" on each finished task, with the date. | Planta, Todoist | This month, plant history | Built (This month) |
+| Swipe right to finish; swipe left to push to next month. Pushed tasks are never shown as overdue. | Todoist | This month | Built |
 | A 12-month bar on every plant, with rows for planting, flowering and pollinator use. | Merlin Bird ID | Plant pages, Plant now cards | Planned |
 | Spring and fall lists grouped by nursery, so each group is a shopping trip. | Our own shopping lists | Seasons | Planned |
 | Each pollinator pick says why in plain words, e.g. "Winter food for western bumblebee queens (threatened)". | RHS Grow, Calscape | Pollinator picks, plant pages | Planned |
@@ -47,7 +47,7 @@ This file is a draft from October 2026. Nothing is built yet. Rules marked **Pla
 | A planting log per plant, filterable by action (planted, moved, divided, died). | Planta | Plant pages | Planned |
 | Kind copy, and a monthly summary against your own past: "6 natives planted this fall, up from 2 last fall." | Gentler Streak | This month, monthly email | Planned |
 | Nursery notes with a "last checked" date, so stale stock info is visible. | Calscape (and its stale-data complaints) | Plant pages, Seasons | Planned |
-| Works with no signal in the garden; changes sync later. | An offline outbox | Everywhere | Planned |
+| Works with no signal in the garden; changes sync later. | An offline outbox | Everywhere | Built (This month) |
 
 ### Avoid
 
@@ -71,7 +71,7 @@ Bottom navigation: Month · Seasons · Plants · Pollinators.
 
 ## Colour (Field Guide)
 
-Colours are tokens. Contrast ratios are not measured yet; when the app is built, add a contrast check script and record the ratios here.
+Colours are tokens. Ratios below were measured when This month was built (October 2026); 4.5:1 is the minimum for body text.
 
 ### Light
 
@@ -89,7 +89,18 @@ Colours are tokens. Contrast ratios are not measured yet; when the app is built,
 
 ### Dark
 
-Warm charcoal, not black. Starting values: `--bg #1a1c18`, `--surface #23261f`, `--ink #ece8dc`, `--muted #a9ac9e`, `--line #3a3d33`, `--accent #7fb08f`, `--bloom #e58a72`. Light is the default; dark is a choice in Settings.
+Warm charcoal, not black. Starting values: `--bg #1a1c18`, `--surface #23261f`, `--ink #ece8dc`, `--muted #a9ac9e`, `--line #3a3d33`, `--accent #7fb08f`, `--lichen #4a5640`, `--bloom #e58a72`. Light is the default; dark is a choice in Settings.
+
+### Measured contrast
+
+| Pair | Light | Dark |
+|---|---|---|
+| Ink on lichen ("done by" initials) | 6.81 | 6.36 |
+| Muted on surface (task details, dates) | 6.38 | 6.64 |
+| Accent on accent-soft (selected tab, swipe hint) | 6.11 | 4.85 |
+| Text on accent (check mark, buttons) | 6.71 | 6.96 |
+
+Dark lichen started at `#6f7d5a` (3.60 with ink) and was darkened to pass.
 
 ## Type
 
