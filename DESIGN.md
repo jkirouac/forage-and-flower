@@ -41,12 +41,12 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 | A small "Done by J" on each finished task, with the date. | Planta, Todoist | This month, plant history | Built (This month) |
 | Swipe right to finish; swipe left to push to next month. Pushed tasks are never shown as overdue. | Todoist | This month | Built |
 | A 12-month bar on every plant, with rows for planting, flowering and pollinator use. | Merlin Bird ID | Plant pages, Plant now cards | Planned |
-| Spring and fall lists grouped by nursery, so each group is a shopping trip. | Our own shopping lists | Seasons | Planned |
+| Spring and fall lists grouped by nursery, so each group is a shopping trip. | Our own shopping lists | Seasons | Built |
 | Each pollinator pick says why in plain words, e.g. "Winter food for western bumblebee queens (threatened)". | RHS Grow, Calscape | Pollinator picks, plant pages | Planned |
 | Site rules on the plant page, in a ruled box: "No biochar here", "Fir mulch, not alder". | Seed packet backs | Plant pages | Planned |
 | A planting log per plant, filterable by action (planted, moved, divided, died). | Planta | Plant pages | Planned |
 | Kind copy, and a monthly summary against your own past: "6 natives planted this fall, up from 2 last fall." | Gentler Streak | This month, monthly email | Planned |
-| Nursery notes with a "last checked" date, so stale stock info is visible. | Calscape (and its stale-data complaints) | Plant pages, Seasons | Planned |
+| Nursery notes with a "last checked" date, so stale stock info is visible. | Calscape (and its stale-data complaints) | Plant pages, Seasons | Built (Seasons) |
 | Works with no signal in the garden; changes sync later. | An offline outbox | Everywhere | Built (This month) |
 
 ### Avoid

@@ -70,7 +70,7 @@ function Garden({ userId }: { userId: string }) {
     <div className="app">
       <main className="screen">
         {screen === 'month' && <Month userId={userId} />}
-        {screen === 'seasons' && <Seasons />}
+        {screen === 'seasons' && <Seasons userId={userId} />}
         {screen === 'plants' && <Plants />}
         {screen === 'pollinators' && <Pollinators />}
         {screen === 'settings' && <Settings />}

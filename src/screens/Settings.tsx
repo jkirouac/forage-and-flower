@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { setRecoveryPending, supabase, useSession } from '../lib/supabase'
 import { PasswordForm } from './NewPassword'
-import { clearLocal } from '../lib/garden'
+import { clearLocal } from '../lib/local'
 import { setThemePref, themePref, type ThemePref } from '../lib/theme'
 import { useInstall } from '../lib/install'
 

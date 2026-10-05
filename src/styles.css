@@ -179,10 +179,13 @@ h1 {
 .field {
   display: grid;
   gap: 4px;
+  min-width: 0;
   font-size: 0.9rem;
   font-weight: 500;
 }
 .field input {
+  width: 100%;
+  min-width: 0;
   font: 400 1rem var(--body);
   min-height: 44px;
   padding: 0 12px;
@@ -345,6 +348,120 @@ h1 {
 .text-button.inline {
   min-height: 0;
   font-size: inherit;
+}
+
+/* Seasons: lists by nursery */
+.group-sub {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.plan-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.plan-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 0;
+}
+.plan-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  padding: 10px 0 10px 14px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.plan-name {
+  overflow-wrap: anywhere;
+}
+.plan-latin {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.plan-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.plan-item[data-status='planted'] .plan-name,
+.plan-item[data-status='skipped'] .plan-name {
+  color: var(--muted);
+}
+.plan-item[data-status='skipped'] .plan-name {
+  text-decoration: line-through;
+  text-decoration-color: var(--line);
+}
+.choice.small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  flex: none;
+}
+.status-chip {
+  flex: none;
+  margin-right: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.plan-item[data-status='skipped'] .status-chip {
+  color: var(--muted);
+  background: none;
+}
+.plan-edit {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.qty {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  max-width: 420px;
+}
+.field select {
+  width: 100%;
+  min-width: 0;
+  font: 400 1rem var(--body);
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.confirm-line {
+  margin: 0;
+}
+.plan-edit > .text-button {
+  justify-self: start;
+}
+.add-form {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
 }
 
 /* Bottom tab bar */

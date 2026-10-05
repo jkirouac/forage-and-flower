@@ -2,7 +2,7 @@
 
 The plan for building **Forage & Flower**, the shared garden app for a two-person household. How it looks is in `DESIGN.md`. The garden content it starts from is the household's markdown garden notes, kept outside this repo.
 
-October 2026. Steps 1 to 3 of the build order are done.
+October 2026. Steps 1 to 4 of the build order are done.
 
 ## Purpose
 
@@ -98,7 +98,7 @@ Each step ends with something you can use.
 1. **Set up.** Repo, app shell, the `garden` schema, sign-in, and your garden with both of you as members. A privacy check confirms an outsider can't read it. **Done.**
 2. **Import.** Script and report (done), then loading the result into the database. **Done.**
 3. **This month.** The checklist under Do / Plant / Buy, initials on ticks, swipe to finish or push to next month, works offline. This is the screen you'll use weekly, so it comes first. **Done.**
-4. **Seasons.** Fall and spring lists grouped by nursery. Edit any item in place: quantity, site, nursery, status (to buy, bought, planted, skipped). Add a plant to a season, or remove one. This is where the lists get corrected, since spring 2026 purchases weren't reviewed before the import.
+4. **Seasons.** Fall and spring lists grouped by nursery. Edit any item in place: quantity, site, nursery, status (to buy, bought, planted, skipped). Add a plant to a season, or remove one. This is where the lists get corrected, since spring 2026 purchases weren't reviewed before the import. **Done.**
 5. **Plant pages.** The 12-month bar, the rules box, where to buy, and the planting log. Recording a planting from here also ticks the matching task.
 6. **Pollinator picks.** The ranked list with reasons, and the year ring with a plain list beneath it.
 7. **Monthly email.** The function that builds the email, its token, and a change to the reminder job to fetch from it instead of its task file. Then retire the task file.

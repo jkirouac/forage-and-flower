@@ -1,0 +1,50 @@
+// The changes waiting in the outbox (outbox.ts), and how a new change folds into
+// them. Pure, so it can be tested without a database (scripts/plan.test.ts).
+
+import { checkKey, type Outcome } from './month.ts'
+
+export type Op =
+  | {
+      kind: 'check'
+      gardenId: string
+      taskId: string
+      year: number
+      month: number
+      outcome: Outcome | null // null removes the tick
+      doneBy: string
+      at: string
+    }
+  | { kind: 'plan-insert'; row: Record<string, unknown> & { id: string } }
+  | { kind: 'plan-update'; id: string; patch: Record<string, unknown> }
+  | { kind: 'plan-delete'; id: string }
+  | { kind: 'plant-insert'; row: Record<string, unknown> & { id: string } }
+
+// Folds a new change into what's waiting, so the outbox never sends work that a
+// later change undoes: a second tick on the same task and month replaces the
+// first, edits to a row not yet sent join its insert, and deleting a row not yet
+// sent just forgets it.
+export function addOp(ops: Op[], op: Op): Op[] {
+  switch (op.kind) {
+    case 'check': {
+      const key = checkKey(op.taskId, op.year, op.month)
+      return [...ops.filter((o) => !(o.kind === 'check' && checkKey(o.taskId, o.year, o.month) === key)), op]
+    }
+    case 'plan-update': {
+      const insert = ops.find((o): o is Extract<Op, { kind: 'plan-insert' }> => o.kind === 'plan-insert' && o.row.id === op.id)
+      if (insert) return ops.map((o) => (o === insert ? { ...insert, row: { ...insert.row, ...op.patch } } : o))
+      const update = ops.find((o) => o.kind === 'plan-update' && o.id === op.id)
+      if (update && update.kind === 'plan-update')
+        return [...ops.filter((o) => o !== update), { ...op, patch: { ...update.patch, ...op.patch } }]
+      return [...ops, op]
+    }
+    case 'plan-delete': {
+      const wasNew = ops.some((o) => o.kind === 'plan-insert' && o.row.id === op.id)
+      const rest = ops.filter(
+        (o) => !((o.kind === 'plan-insert' && o.row.id === op.id) || (o.kind === 'plan-update' && o.id === op.id)),
+      )
+      return wasNew ? rest : [...rest, op]
+    }
+    default:
+      return [...ops, op]
+  }
+}
