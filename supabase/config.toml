@@ -1,0 +1,10 @@
+# Only for deploying this repo's function to the shared Supabase project:
+#
+#   npx supabase functions deploy garden-email --project-ref <ref>
+#
+# The shared project's migrations and settings are managed elsewhere. Never run
+# `supabase db push` or `supabase config push` from this repo.
+
+[functions.garden-email]
+# Called by the monthly reminder job with its own token, not a signed-in person's.
+verify_jwt = false
