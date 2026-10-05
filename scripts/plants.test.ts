@@ -9,6 +9,7 @@ import {
   splitPlants,
   taskForPlanting,
   taskNamesPlant,
+  linkPlantNames,
   plantTraits,
   plantsByPlace,
   summarizeRules,
@@ -186,4 +187,21 @@ test('plants by place: in the ground, on a list, the rest', () => {
   assert.deepEqual(inGround.map((p) => p.id), ['A', 'C'])
   assert.deepEqual(onLists.map((p) => p.id), ['B'])
   assert.deepEqual(others.map((p) => p.id), ['D', 'E'])
+})
+
+test('plant names in a task title become links, longest name first', () => {
+  const plants = [
+    { id: 'loquat', common: 'Loquat' },
+    { id: 'fig', common: 'Fig' },
+    { id: 'heather', common: 'Heather' },
+    { id: 'winter-heather', common: 'Winter Heather' },
+    { id: 'nepeta-wl', common: "Nepeta 'Walker's Low'" },
+    { id: 'nepeta', common: 'Nepeta' },
+  ]
+  const linked = (title: string) => linkPlantNames(title, plants).map((p) => (p.plantId ? `[${p.text}:${p.plantId}]` : p.text)).join('')
+  assert.equal(linked('Transplant: Loquat, potted fig (early October)'), 'Transplant: [Loquat:loquat], potted [fig:fig] (early October)')
+  assert.equal(linked('Transplant: Hellebore, Winter Heather starts'), 'Transplant: Hellebore, [Winter Heather:winter-heather] starts')
+  assert.equal(linked('Light trim of nepeta where it smothers'), 'Light trim of [nepeta:nepeta] where it smothers')
+  assert.equal(linked('Harvest figs'), 'Harvest [figs:fig]')
+  assert.equal(linked('Configure the bin'), 'Configure the bin')
 })

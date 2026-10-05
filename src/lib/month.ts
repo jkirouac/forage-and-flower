@@ -99,3 +99,45 @@ export function shownItems(items: Item[], nextVisible: boolean, showCleared: boo
     (i) => !(i.check?.outcome === 'pushed' && nextVisible) && (showCleared || !i.check?.cleared_at),
   )
 }
+
+// ---------- moving a task to another month (hold and drag on This month) ----------
+
+export interface MonthRef {
+  year: number
+  month: number
+}
+
+const order = (r: MonthRef) => r.year * 12 + r.month - 1
+
+// The month a task's moves started from: walk back while last month moved it on.
+export function pushOrigin(checks: Check[], taskId: string, year: number, month: number): MonthRef {
+  const pushed = new Set(
+    checks.filter((c) => c.task_id === taskId && c.outcome === 'pushed').map((c) => checkKey(taskId, c.year, c.month)),
+  )
+  let at: MonthRef = { year, month }
+  for (let i = 0; i < 24; i++) {
+    const prev = previousMonth(at.year, at.month)
+    if (!pushed.has(checkKey(taskId, prev.year, prev.month))) break
+    at = prev
+  }
+  return at
+}
+
+export interface TickChange extends MonthRef {
+  outcome: 'pushed' | null // null removes the tick
+}
+
+// The ticks that move a task shown in month `from` to month `to`. Later: a
+// "pushed" tick for each month on the way (October to December is pushed in
+// October and November). Earlier: remove those ticks again. A task can't go before
+// the month its moves started from, so that gives null.
+export function moveTicks(origin: MonthRef, from: MonthRef, to: MonthRef): TickChange[] | null {
+  if (order(to) < order(origin)) return null
+  const changes: TickChange[] = []
+  if (order(to) > order(from)) {
+    for (let at = from; order(at) < order(to); at = nextMonth(at.year, at.month)) changes.push({ ...at, outcome: 'pushed' })
+  } else {
+    for (let at = to; order(at) < order(from); at = nextMonth(at.year, at.month)) changes.push({ ...at, outcome: null })
+  }
+  return changes
+}

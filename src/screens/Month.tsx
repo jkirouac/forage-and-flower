@@ -1,20 +1,22 @@
-import { useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
 import { useGarden } from '../lib/garden'
 import { useSeasons } from '../lib/seasons'
 import { useCatalogue } from '../lib/catalogue'
 import {
   buildMonth,
+  moveTicks,
   nextMonth,
-  previousMonth,
+  pushOrigin,
   SECTIONS,
   shownItems,
   upcomingMonths,
   type Item,
+  type MonthRef,
   type Outcome,
   type Section,
 } from '../lib/month'
 import { buyingSeason, groupByNursery, groupByPlant, qtyLabel, seasonLabel, type Group, type Plant, type PlanItem, type Site } from '../lib/plan'
-import { taskNamesPlant, type FullPlant } from '../lib/plants'
+import { linkPlantNames, type FullPlant } from '../lib/plants'
 import { MONTHS, monthHeading, shortDate } from '../lib/season'
 import { clearSummary } from '../lib/clear'
 import { ClearBar, ShowCleared } from './ClearBar'
@@ -32,9 +34,10 @@ const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
 const MAX_MONTHS = 12
 
 // This month and the next few, each under its own header with Do / Plant / Buy.
-// Tap the circle or swipe right to finish a task; swipe left to move it to next
-// month, where it shows "From Oct". Tap a card to open it. Buy comes from the
-// Seasons list for this time of year, one card per nursery.
+// Tap a card to tick it done; press and hold a card, then drag it onto another
+// month to move it there ("From Oct"). The small arrow opens its note. Plant names
+// in a task are links to their pages. Buy comes from the Shopping list for this
+// time of year, one card per nursery.
 export default function Month({ userId }: { userId: string }) {
   // The date when the screen opened; reopening the app picks up a new month.
   const [now] = useState(() => new Date())
@@ -47,6 +50,29 @@ export default function Month({ userId }: { userId: string }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [showCleared, setShowCleared] = useState(false)
   const [count, setCount] = useState(3)
+  const drag = useDragToMonth()
+  const [notice, setNotice] = useState<{ text: string; undo?: () => void } | null>(null)
+
+  // A notice ("Moved to December. Undo") goes after a few seconds.
+  useEffect(() => {
+    if (!notice) return
+    const t = setTimeout(() => setNotice(null), notice.undo ? 6000 : 2500)
+    return () => clearTimeout(t)
+  }, [notice])
+
+  // Applies the ticks that move a task between months, with an undo.
+  function moveTask(taskId: string, origin: MonthRef, from: MonthRef, to: MonthRef) {
+    const changes = moveTicks(origin, from, to)
+    if (!changes || changes.length === 0) return
+    for (const c of changes) tick(taskId, c.year, c.month, c.outcome)
+    setNotice({
+      text: `Moved to ${MONTHS[to.month - 1]}.`,
+      undo: () => {
+        for (const c of moveTicks(origin, to, from) ?? []) tick(taskId, c.year, c.month, c.outcome)
+        setNotice(null)
+      },
+    })
+  }
 
   const months = upcomingMonths(year, month, count)
   const lists = garden ? months.map((m) => ({ ...m, list: buildMonth(garden.tasks, garden.checks, m.year, m.month) })) : []
@@ -123,7 +149,6 @@ export default function Month({ userId }: { userId: string }) {
             const isNow = index === 0
             const nextOnScreen = index < lists.length - 1
             const next = nextMonth(l.year, l.month)
-            const prev = previousMonth(l.year, l.month)
             const season = buyingSeason(l.year, l.month)
             const parts = SECTIONS.filter((s) => filter === 'all' || filter === s).map((section) => {
               const items = shownItems(l.list[section], nextOnScreen, showCleared)
@@ -155,13 +180,16 @@ export default function Month({ userId }: { userId: string }) {
                           key={item.task.id}
                           item={item}
                           initials={item.check?.done_by ? garden.members[item.check.done_by] : undefined}
-                          thisName={MONTHS[l.month - 1]}
                           nextName={MONTHS[next.month - 1]}
-                          prevName={MONTHS[prev.month - 1]}
-                          nextOnScreen={nextOnScreen}
-                          plants={plants.filter((p) => taskNamesPlant(item.task, p))}
+                          plants={plants}
+                          dragging={drag.taskId === item.task.id}
+                          months={months}
+                          origin={pushOrigin(garden.checks, item.task.id, l.year, l.month)}
+                          at={{ year: l.year, month: l.month }}
                           onSet={(outcome) => tick(item.task.id, l.year, l.month, outcome)}
-                          onMoveBack={() => tick(item.task.id, prev.year, prev.month, null)}
+                          onMove={(origin, to) => moveTask(item.task.id, origin, { year: l.year, month: l.month }, to)}
+                          onHint={(text) => setNotice({ text })}
+                          drag={drag}
                         />
                       ))}
                     </ul>
@@ -173,7 +201,12 @@ export default function Month({ userId }: { userId: string }) {
             })
             const shown = parts.filter(Boolean)
             return (
-              <section key={`${l.year}-${l.month}`} className="month-block">
+              <section
+                key={`${l.year}-${l.month}`}
+                className="month-block"
+                data-month={`${l.year}-${l.month}`}
+                data-drop={drag.over?.key === `${l.year}-${l.month}` ? (drag.over.valid ? 'yes' : 'no') : undefined}
+              >
                 <h2 className="month-header">
                   {MONTHS[l.month - 1]}
                   {l.year !== year ? ` ${l.year}` : ''}
@@ -189,6 +222,28 @@ export default function Month({ userId }: { userId: string }) {
             </button>
           )}
           <ShowCleared count={clearedCount} shown={showCleared} onToggle={() => setShowCleared(!showCleared)} />
+          {drag.ghost && (
+            <div className="drag-ghost" style={{ top: drag.ghost.top, left: drag.ghost.left, width: drag.ghost.width }} aria-hidden="true">
+              {drag.ghost.title}
+              <span className="drag-target">
+                {drag.over
+                  ? drag.over.valid
+                    ? `Drop in ${MONTHS[Number(drag.over.key.split('-')[1]) - 1]}`
+                    : `Can't go before its month`
+                  : 'Drag onto a month'}
+              </span>
+            </div>
+          )}
+          {notice && (
+            <p className="move-notice" role="status">
+              {notice.text}{' '}
+              {notice.undo && (
+                <button type="button" className="text-button inline" onClick={notice.undo}>
+                  Undo
+                </button>
+              )}
+            </p>
+          )}
           <ClearBar
             summary={clearSummary(
               clearable.map((x) => x.item.check?.done_by ?? null),
@@ -220,80 +275,223 @@ function Tick() {
   )
 }
 
-const SWIPE = 80 // pixels of travel that count as a swipe
+// ---------- hold and drag a card onto another month ----------
+
+const HOLD_MS = 450
+// From Mealboard: a thumb drifts sideways while holding still, so allow more
+// sideways than up-and-down, which means the page is being scrolled.
+const HOLD_TOLERANCE = { x: 32, y: 12 }
+const EDGE = 90 // px from the top or bottom where a drag scrolls the page
+
+interface DragApi {
+  taskId: string | null
+  over: { key: string; valid: boolean } | null
+  ghost: { top: number; left: number; width: number; title: string } | null
+  start: (taskId: string, title: string, card: HTMLElement, x: number, y: number, isValid: (to: MonthRef) => boolean) => void
+  move: (x: number, y: number) => void
+  end: (x: number, y: number) => MonthRef | null
+  cancel: () => void
+}
+
+// The month under the finger. Over the tab bar, look just above it, so a card
+// dragged to the bottom edge still lands in the month showing there.
+const monthAt = (x: number, y: number): MonthRef | null => {
+  const tabs = document.querySelector('.tabbar')?.getBoundingClientRect().top ?? window.innerHeight
+  const el = document.elementFromPoint(x, Math.min(y, tabs - 12))?.closest('[data-month]') as HTMLElement | null
+  const m = el?.dataset.month?.match(/^(\d+)-(\d+)$/)
+  return m ? { year: Number(m[1]), month: Number(m[2]) } : null
+}
+
+// The drag itself, kept at screen level: a copy of the card follows the finger,
+// the month under it lights up, and the page scrolls near the edges. While a card
+// is held the page doesn't scroll under the finger.
+function useDragToMonth(): DragApi {
+  const [taskId, setTaskId] = useState<string | null>(null)
+  const [over, setOver] = useState<DragApi['over']>(null)
+  const [ghost, setGhost] = useState<DragApi['ghost']>(null)
+  const state = useRef<{ offsetY: number; left: number; width: number; title: string; x: number; y: number; isValid: (to: MonthRef) => boolean; raf: number } | null>(null)
+
+  const stopScroll = useRef((e: TouchEvent) => e.preventDefault())
+
+  function place(x: number, y: number) {
+    const st = state.current
+    if (!st) return
+    st.x = x
+    st.y = y
+    setGhost({ top: y - st.offsetY, left: st.left, width: st.width, title: st.title })
+    const to = monthAt(x, y)
+    setOver(to ? { key: `${to.year}-${to.month}`, valid: st.isValid(to) } : null)
+  }
+
+  function scrollLoop() {
+    const st = state.current
+    if (!st) return
+    const bottom = window.innerHeight - 80 // above the tab bar
+    const speed = st.y < EDGE ? -Math.ceil((EDGE - st.y) / 6) : st.y > bottom - EDGE ? Math.ceil((st.y - (bottom - EDGE)) / 6) : 0
+    if (speed) {
+      window.scrollBy(0, Math.max(-18, Math.min(18, speed)))
+      place(st.x, st.y)
+    }
+    st.raf = requestAnimationFrame(scrollLoop)
+  }
+
+  function finish() {
+    const st = state.current
+    if (st) cancelAnimationFrame(st.raf)
+    state.current = null
+    document.removeEventListener('touchmove', stopScroll.current)
+    setTaskId(null)
+    setOver(null)
+    setGhost(null)
+  }
+
+  return {
+    taskId,
+    over,
+    ghost,
+    start(id, title, card, x, y, isValid) {
+      const r = card.getBoundingClientRect()
+      state.current = { offsetY: y - r.top, left: r.left, width: r.width, title, x, y, isValid, raf: 0 }
+      document.addEventListener('touchmove', stopScroll.current, { passive: false })
+      setTaskId(id)
+      place(x, y)
+      state.current.raf = requestAnimationFrame(scrollLoop)
+      navigator.vibrate?.(10)
+    },
+    move: place,
+    end(x, y) {
+      const st = state.current
+      const to = monthAt(x, y)
+      const ok = st && to && st.isValid(to) ? to : null
+      finish()
+      return ok
+    },
+    cancel: finish,
+  }
+}
 
 function TaskRow({
   item,
   initials,
-  thisName,
   nextName,
-  prevName,
-  nextOnScreen,
   plants,
+  dragging,
+  months,
+  origin,
+  at,
   onSet,
-  onMoveBack,
+  onMove,
+  onHint,
+  drag,
 }: {
   item: Item
   initials: string | undefined
-  thisName: string
   nextName: string
-  prevName: string
-  nextOnScreen: boolean
   plants: FullPlant[]
+  dragging: boolean
+  months: MonthRef[]
+  origin: MonthRef
+  at: MonthRef
   onSet: (outcome: Outcome | null) => void
-  onMoveBack: () => void
+  onMove: (origin: MonthRef, to: MonthRef) => void
+  onHint: (text: string) => void
+  drag: DragApi
 }) {
   const { task, check, pushedFrom } = item
   const done = check?.outcome === 'done'
   const pushed = check?.outcome === 'pushed'
   const [open, setOpen] = useState(false)
-  const [dx, setDx] = useState(0)
-  const drag = useRef<{ x: number; y: number; id: number; sideways: boolean | null } | null>(null)
+  const [pressed, setPressed] = useState(false)
+  const press = useRef<{ x: number; y: number; id: number; timer: number; held: boolean } | null>(null)
+  const swallowClick = useRef(false)
 
-  // Sideways drags swipe; up-and-down ones are left to scroll the page.
+  const isTarget = (to: MonthRef) => {
+    const changes = moveTicks(origin, at, to)
+    return changes !== null && changes.length > 0
+  }
+  // Presses that start on a link, the arrow or the circle aren't holds or taps on the card.
+  const onControl = (target: EventTarget | null) => !!(target as HTMLElement | null)?.closest('a, button, select')
+
   function down(e: PointerEvent<HTMLLIElement>) {
-    if (e.pointerType === 'mouse' && e.button !== 0) return
-    drag.current = { x: e.clientX, y: e.clientY, id: e.pointerId, sideways: null }
+    if ((e.pointerType === 'mouse' && e.button !== 0) || onControl(e.target)) return
+    const card = e.currentTarget
+    const { clientX: x, clientY: y, pointerId: id } = e
+    setPressed(true)
+    const timer = window.setTimeout(() => {
+      const p = press.current
+      if (!p) return
+      setPressed(false)
+      if (task.every_month) return onHint('This one repeats every month, so it stays put.')
+      if (done) return onHint('Untick it first to move it.')
+      if (pushed) return onHint(`It's already moved to ${nextName}. Show more months to move it further.`)
+      p.held = true
+      swallowClick.current = true
+      try {
+        card.setPointerCapture(id)
+      } catch {
+        // The pointer may have gone; the drag still follows pointermove.
+      }
+      drag.start(task.id, task.title, card, x, y, isTarget)
+    }, HOLD_MS)
+    press.current = { x, y, id, timer, held: false }
   }
   function move(e: PointerEvent<HTMLLIElement>) {
-    const d = drag.current
-    if (!d || d.id !== e.pointerId) return
-    const x = e.clientX - d.x
-    const y = e.clientY - d.y
-    if (d.sideways === null && (Math.abs(x) > 10 || Math.abs(y) > 10)) {
-      d.sideways = Math.abs(x) > Math.abs(y)
-      if (d.sideways) e.currentTarget.setPointerCapture(e.pointerId)
+    const p = press.current
+    if (!p || p.id !== e.pointerId) return
+    if (p.held) return drag.move(e.clientX, e.clientY)
+    if (Math.abs(e.clientX - p.x) > HOLD_TOLERANCE.x || Math.abs(e.clientY - p.y) > HOLD_TOLERANCE.y) {
+      clearTimeout(p.timer)
+      press.current = null
+      setPressed(false)
     }
-    if (d.sideways) setDx(Math.max(-140, Math.min(140, x)))
   }
-  function up() {
-    const d = drag.current
-    drag.current = null
-    if (d?.sideways) {
-      if (dx > SWIPE) onSet(done ? null : 'done')
-      else if (dx < -SWIPE && !done) onSet(pushed ? null : 'pushed')
+  function up(e: PointerEvent<HTMLLIElement>) {
+    const p = press.current
+    press.current = null
+    setPressed(false)
+    if (!p) return
+    clearTimeout(p.timer)
+    if (p.held) {
+      const to = drag.end(e.clientX, e.clientY)
+      if (to) onMove(origin, to)
     }
-    setDx(0)
+  }
+  function cancel() {
+    const p = press.current
+    press.current = null
+    setPressed(false)
+    if (!p) return
+    clearTimeout(p.timer)
+    if (p.held) drag.cancel()
+  }
+  // A tap anywhere on the card (but not on a link, the arrow or the circle) ticks it.
+  function tap(e: MouseEvent<HTMLLIElement>) {
+    if (swallowClick.current) {
+      swallowClick.current = false
+      return
+    }
+    if (onControl(e.target)) return
+    onSet(done ? null : 'done')
   }
 
   const when = check ? new Date(check.done_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : ''
-  const toggle = () => setOpen(!open)
+  const later = months.filter((m) => isTarget(m))
 
   return (
     <li
       className="task"
       data-state={done ? 'done' : pushed ? 'pushed' : 'open'}
       data-open={open || undefined}
+      data-pressed={pressed || undefined}
+      data-dragging={dragging || undefined}
       onPointerDown={down}
       onPointerMove={move}
       onPointerUp={up}
-      onPointerCancel={up}
+      onPointerCancel={cancel}
+      onClick={tap}
+      onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="task-under" aria-hidden="true">
-        <span>{done ? 'Not done' : 'Done'}</span>
-        <span>{pushed ? `Back to ${thisName}` : `To ${nextName}`}</span>
-      </div>
-      <div className="task-face" style={dx ? { transform: `translateX(${dx}px)` } : undefined}>
+      <div className="task-face">
         <button
           type="button"
           className="task-check"
@@ -304,8 +502,18 @@ function TaskRow({
         >
           {done && <Tick />}
         </button>
-        <button type="button" className="task-open" aria-expanded={open} onClick={toggle}>
-          <span className="task-title">{task.title}</span>
+        <div className="task-open">
+          <span className="task-title">
+            {linkPlantNames(task.title, plants).map((part, i) =>
+              part.plantId ? (
+                <a key={i} href={`#plant/${encodeURIComponent(part.plantId)}`} className="plant-name">
+                  {part.text}
+                </a>
+              ) : (
+                <span key={i}>{part.text}</span>
+              ),
+            )}
+          </span>
           {(pushedFrom || task.every_month || check) && (
             <span className="task-meta">
               {pushedFrom && !check && <span>From {MONTHS_SHORT[pushedFrom - 1]}</span>}
@@ -315,11 +523,11 @@ function TaskRow({
                   {initials ?? '?'} · {when}
                 </span>
               )}
-              {pushed && !nextOnScreen && <span>Moved to {nextName}</span>}
+              {pushed && <span>Moved to {nextName}</span>}
             </span>
           )}
-        </button>
-        <Chevron open={open} label={`${open ? 'Close' : 'Open'}: ${task.title}`} onClick={toggle} />
+        </div>
+        <Chevron open={open} label={`${open ? 'Close' : 'Open'} the note: ${task.title}`} onClick={() => setOpen(!open)} />
       </div>
       {open && (
         <div className="task-more">
@@ -329,42 +537,32 @@ function TaskRow({
               How to (opens a video)
             </a>
           )}
-          {plants.length > 0 && (
-            <p className="task-plants">
-              {plants.map((p, i) => (
-                <span key={p.id}>
-                  {i > 0 && ', '}
-                  <a href={`#plant/${encodeURIComponent(p.id)}`}>{p.common}</a>
-                </span>
-              ))}
-            </p>
-          )}
-          {pushedFrom && !check && <p className="task-detail">Moved here from {prevName}.</p>}
+          {pushedFrom && !check && <p className="task-detail">Moved here from {MONTHS[pushedFrom - 1]}.</p>}
           {done && (
             <p className="task-detail">
               Done by {initials ?? 'someone'} on {when}.
             </p>
           )}
-          <div className="choices">
-            <button type="button" className="choice small" onClick={() => onSet(done ? null : 'done')}>
-              {done ? 'Not done' : 'Done'}
-            </button>
-            {!done && !pushed && (
-              <button type="button" className="choice small" onClick={() => onSet('pushed')}>
-                Move to {nextName}
-              </button>
-            )}
-            {pushed && (
-              <button type="button" className="choice small" onClick={() => onSet(null)}>
-                Keep in {thisName}
-              </button>
-            )}
-            {pushedFrom && !check && (
-              <button type="button" className="choice small" onClick={onMoveBack}>
-                Move back to {prevName}
-              </button>
-            )}
-          </div>
+          {!task.every_month && !done && !pushed && later.length > 0 && (
+            <label className="move-to">
+              Move to
+              <select
+                value=""
+                onChange={(e) => {
+                  const [y, m] = e.target.value.split('-').map(Number)
+                  if (y) onMove(origin, { year: y, month: m })
+                }}
+              >
+                <option value="">Choose a month</option>
+                {later.map((m) => (
+                  <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
+                    {MONTHS[m.month - 1]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {!task.detail && !task.link && !(pushedFrom && !check) && !done && <p className="task-detail">No note for this one.</p>}
         </div>
       )}
     </li>

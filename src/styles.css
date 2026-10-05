@@ -247,20 +247,81 @@ h1 {
   position: relative;
   border-radius: 12px;
   overflow: hidden;
-  /* Up-and-down still scrolls; sideways drags are swipes. */
+  /* Up-and-down scrolls; a hold lifts the card (the drag then stops the scroll). */
   touch-action: pan-y;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.task-under {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 16px;
+.task[data-pressed] .task-face {
+  background: var(--accent-soft);
+}
+.task[data-dragging] {
+  opacity: 0.35;
+}
+.plant-name {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.task[data-state='done'] .plant-name {
+  color: inherit;
+}
+/* The card's copy that follows the finger, and the month it would land in. */
+.drag-ghost {
+  position: fixed;
+  z-index: 10;
+  padding: 14px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.22);
+  transform: scale(1.02);
+  pointer-events: none;
+}
+.drag-target {
+  display: block;
+  margin-top: 6px;
   font-size: 0.85rem;
   font-weight: 600;
-  background: var(--accent-soft);
   color: var(--accent);
+}
+.month-block[data-drop='yes'] {
+  outline: 2px dashed var(--accent);
+  outline-offset: 6px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+}
+.move-notice {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 82px);
+  z-index: 2;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--bg);
+}
+.move-notice .text-button {
+  color: var(--bg);
+}
+.move-to {
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+  max-width: 260px;
+}
+.move-to select {
+  font: 400 1rem var(--body);
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
 }
 .task-face {
   position: relative;

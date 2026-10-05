@@ -233,3 +233,41 @@ export function plantsByPlace(
     others: plants.filter((p) => !inGround.has(p.id) && !onLists.has(p.id)).sort(byName),
   }
 }
+
+// ---------- plant names as links in task titles ----------
+
+export interface TitlePart {
+  text: string
+  plantId?: string
+}
+
+// "Transplant: Loquat, potted fig" -> ["Transplant: ", Loquat->loquat, ", potted ", fig->fig].
+// Whole words, plural allowed, each plant once. Longer names first, so "Winter
+// Heather" isn't split by "Heather"; for names shared by several plants ("Nepeta"),
+// the plant called exactly that wins.
+export function linkPlantNames(title: string, plants: Pick<FullPlant, 'id' | 'common'>[]): TitlePart[] {
+  const lower = title.toLowerCase()
+  const candidates = plants
+    .map((p) => ({ id: p.id, name: baseName(p.common), exact: baseName(p.common) === p.common.toLowerCase() }))
+    .filter((c) => c.name.length > 2)
+    .sort((a, b) => b.name.length - a.name.length || Number(b.exact) - Number(a.exact))
+  const found: { start: number; end: number; id: string }[] = []
+  for (const c of candidates) {
+    const m = new RegExp(`(^|[^a-z])(${escape(c.name)}s?)(?=[^a-z]|$)`).exec(lower)
+    if (!m) continue
+    const start = m.index + m[1].length
+    const end = start + m[2].length
+    if (found.some((f) => start < f.end && end > f.start)) continue
+    found.push({ start, end, id: c.id })
+  }
+  found.sort((a, b) => a.start - b.start)
+  const parts: TitlePart[] = []
+  let at = 0
+  for (const f of found) {
+    if (f.start > at) parts.push({ text: title.slice(at, f.start) })
+    parts.push({ text: title.slice(f.start, f.end), plantId: f.id })
+    at = f.end
+  }
+  if (at < title.length) parts.push({ text: title.slice(at) })
+  return parts
+}
