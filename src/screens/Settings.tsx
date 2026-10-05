@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { supabase, useSession } from '../lib/supabase'
+import { setRecoveryPending, supabase, useSession } from '../lib/supabase'
+import { PasswordForm } from './NewPassword'
 import { setThemePref, themePref, type ThemePref } from '../lib/theme'
 import { useInstall } from '../lib/install'
 
@@ -16,6 +17,8 @@ export default function Settings() {
   const userId = session?.user.id
   // undefined while loading, null when this account isn't in a garden yet.
   const [initials, setInitials] = useState<string | null | undefined>(undefined)
+  const [changing, setChanging] = useState(false)
+  const [passwordSaved, setPasswordSaved] = useState(false)
 
   useEffect(() => {
     if (!userId) return
@@ -65,9 +68,44 @@ export default function Settings() {
         {initials === null && (
           <p className="empty">This account isn't part of a garden yet. Ask whoever runs your garden to add you.</p>
         )}
-        <button type="button" className="choice" onClick={() => void supabase.auth.signOut()}>
+        <button
+          type="button"
+          className="choice"
+          onClick={() => {
+            setRecoveryPending(false)
+            void supabase.auth.signOut()
+          }}
+        >
           Sign out
         </button>
+      </section>
+      <section className="block">
+        <h2 className="label">Password</h2>
+        {passwordSaved && (
+          <p className="notice" role="status">
+            Password changed. If you use Packed or MealBoard too, it's changed there as well.
+          </p>
+        )}
+        {changing ? (
+          <PasswordForm
+            label="New password"
+            onSaved={() => {
+              setChanging(false)
+              setPasswordSaved(true)
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className="choice"
+            onClick={() => {
+              setChanging(true)
+              setPasswordSaved(false)
+            }}
+          >
+            Change password
+          </button>
+        )}
       </section>
       {!install.installed && (
         <section className="block">

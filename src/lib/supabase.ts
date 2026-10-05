@@ -31,6 +31,45 @@ export function useSession(): Session | null | undefined {
 
 export type Arrival = 'recovery' | 'confirmed' | 'link-failed' | null
 
+// A reset link may open in the email app's own browser view while the person
+// carries on in another tab, which signs in too (sessions are shared). A flag
+// in storage lets whichever tab they're looking at ask for the new password.
+const RECOVERY_KEY = 'ff-recovery'
+
+function readRecoveryFlag() {
+  try {
+    return localStorage.getItem(RECOVERY_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function setRecoveryPending(pending: boolean) {
+  try {
+    if (pending) localStorage.setItem(RECOVERY_KEY, '1')
+    else localStorage.removeItem(RECOVERY_KEY)
+  } catch {
+    // Storage blocked: only the tab that opened the link asks.
+  }
+  window.dispatchEvent(new Event('ff-recovery'))
+}
+
+export function useRecoveryPending() {
+  const [pending, setPending] = useState(readRecoveryFlag)
+  useEffect(() => {
+    const update = () => setPending(readRecoveryFlag())
+    window.addEventListener('storage', update)
+    window.addEventListener('ff-recovery', update)
+    window.addEventListener('focus', update)
+    return () => {
+      window.removeEventListener('storage', update)
+      window.removeEventListener('ff-recovery', update)
+      window.removeEventListener('focus', update)
+    }
+  }, [])
+  return pending
+}
+
 export function hasEmailLink() {
   return new URLSearchParams(location.search).has('token_hash')
 }
@@ -49,6 +88,7 @@ export function readEmailLink(): Promise<Arrival> {
     if (type !== 'recovery' && type !== 'signup') return 'link-failed'
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
     if (error) return 'link-failed'
+    if (type === 'recovery') setRecoveryPending(true)
     return type === 'recovery' ? 'recovery' : 'confirmed'
   })()
   return reading

@@ -7,7 +7,7 @@ import Settings from './screens/Settings'
 import { NavIcon, type NavKind } from './screens/NavIcon'
 import SignIn from './screens/SignIn'
 import NewPassword from './screens/NewPassword'
-import { configured, hasEmailLink, readEmailLink, useSession, type Arrival } from './lib/supabase'
+import { configured, hasEmailLink, readEmailLink, setRecoveryPending, useRecoveryPending, useSession, type Arrival } from './lib/supabase'
 
 type Screen = NavKind | 'settings'
 
@@ -29,6 +29,7 @@ export default function App() {
   // A reset or confirm link is checked before deciding what to show.
   const [checkingLink, setCheckingLink] = useState(hasEmailLink)
   const [arrival, setArrival] = useState<Arrival>(null)
+  const recoveryPending = useRecoveryPending()
 
   useEffect(() => {
     void readEmailLink().then((a) => {
@@ -47,7 +48,7 @@ export default function App() {
     )
   }
   if (checkingLink || session === undefined) return null
-  if (arrival === 'recovery' && session) return <NewPassword onDone={() => setArrival(null)} />
+  if (recoveryPending && session) return <NewPassword onDone={() => setRecoveryPending(false)} />
   if (!session) return <SignIn arrival={arrival} />
   return <Garden />
 }
