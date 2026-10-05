@@ -20,6 +20,14 @@ export interface Garden {
 function applyTicks(checks: Check[], ops: Op[]): Check[] {
   const byKey = new Map(checks.map((c) => [checkKey(c.task_id, c.year, c.month), c]))
   for (const op of ops) {
+    if (op.kind === 'clear-checks') {
+      for (const taskId of op.taskIds) {
+        const key = checkKey(taskId, op.year, op.month)
+        const c = byKey.get(key)
+        if (c) byKey.set(key, { ...c, cleared_at: op.at })
+      }
+      continue
+    }
     if (op.kind !== 'check') continue
     const key = checkKey(op.taskId, op.year, op.month)
     if (op.outcome === null) byKey.delete(key)
@@ -31,6 +39,8 @@ function applyTicks(checks: Check[], ops: Op[]): Check[] {
         outcome: op.outcome,
         done_by: op.doneBy,
         done_at: op.at,
+        // Changing a tick (say, done to pushed) doesn't bring a cleared one back.
+        cleared_at: byKey.get(key)?.cleared_at ?? null,
       })
   }
   return [...byKey.values()]
@@ -51,7 +61,7 @@ export async function loadGarden(userId: string, year: number): Promise<Garden> 
         .order('position'),
       supabase
         .from('task_checks')
-        .select('task_id, year, month, outcome, done_by, done_at')
+        .select('task_id, year, month, outcome, done_by, done_at, cleared_at')
         .eq('garden_id', gardenId)
         .gte('year', year - 1),
     ])
@@ -100,5 +110,15 @@ export function useGarden(userId: string, year: number) {
     [gardenId, userId],
   )
 
-  return { garden, error, pending, reload, tick }
+  const clear = useCallback(
+    (taskIds: string[], y: number, m: number) => {
+      if (!gardenId || taskIds.length === 0) return
+      const op: Op = { kind: 'clear-checks', gardenId, year: y, month: m, taskIds, at: new Date().toISOString() }
+      setGarden((prev) => (prev ? { ...prev, checks: applyTicks(prev.checks, [op]) } : prev))
+      void queue(op)
+    },
+    [gardenId],
+  )
+
+  return { garden, error, pending, reload, tick, clear }
 }

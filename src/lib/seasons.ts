@@ -25,6 +25,7 @@ function applyEdits(data: SeasonsData, ops: Op[]): SeasonsData {
     else if (op.kind === 'plan-update') items = items.map((i) => (i.id === op.id ? { ...i, ...op.patch } : i))
     else if (op.kind === 'plan-delete') items = items.filter((i) => i.id !== op.id)
     else if (op.kind === 'plant-insert' && !plants.some((p) => p.id === op.row.id)) plants = [...plants, op.row as unknown as Plant]
+    else if (op.kind === 'plan-clear') items = items.map((i) => (op.ids.includes(i.id) ? { ...i, cleared_at: op.at } : i))
   }
   return { ...data, items, plants }
 }
@@ -36,7 +37,7 @@ export async function loadSeasons(userId: string): Promise<SeasonsData> {
     const [items, plants, sites, nurseries] = await Promise.all([
       supabase
         .from('plan_items')
-        .select('id, garden_id, plant_id, site_id, season, status, qty_min, qty_max, nursery_id, spot, notes')
+        .select('id, garden_id, plant_id, site_id, season, status, qty_min, qty_max, nursery_id, spot, notes, cleared_at, status_by')
         .eq('garden_id', gardenId),
       supabase.from('plants').select('id, key, common, latin, kind').order('common'),
       supabase.from('sites').select('id, number, name').eq('garden_id', gardenId).order('number'),
@@ -85,8 +86,21 @@ export function useSeasons(userId: string) {
     void queue(op)
   }, [])
 
+  // A status change records who made it; going back to "to buy" un-clears the item.
   const update = useCallback(
-    (id: string, patch: Partial<Omit<PlanItem, 'id' | 'garden_id'>>) => change({ kind: 'plan-update', id, patch }),
+    (id: string, patch: Partial<Omit<PlanItem, 'id' | 'garden_id'>>) => {
+      const full = patch.status
+        ? { ...patch, status_by: userId, ...(patch.status === 'to buy' ? { cleared_at: null } : {}) }
+        : patch
+      change({ kind: 'plan-update', id, patch: full })
+    },
+    [change, userId],
+  )
+
+  const clear = useCallback(
+    (ids: string[]) => {
+      if (ids.length) change({ kind: 'plan-clear', ids, at: new Date().toISOString() })
+    },
     [change],
   )
 
@@ -95,7 +109,16 @@ export function useSeasons(userId: string) {
   const add = useCallback(
     (item: NewItem) => {
       if (!gardenId) return
-      const row = { id: crypto.randomUUID(), garden_id: gardenId, status: 'to buy', spot: null, notes: null, ...item }
+      const row = {
+        id: crypto.randomUUID(),
+        garden_id: gardenId,
+        status: 'to buy',
+        spot: null,
+        notes: null,
+        cleared_at: null,
+        status_by: null,
+        ...item,
+      }
       change({ kind: 'plan-insert', row })
     },
     [change, gardenId],
@@ -112,5 +135,5 @@ export function useSeasons(userId: string) {
     [change, data?.plants],
   )
 
-  return { data, error, pending, reload, update, remove, add, addPlant }
+  return { data, error, pending, reload, update, remove, add, addPlant, clear }
 }

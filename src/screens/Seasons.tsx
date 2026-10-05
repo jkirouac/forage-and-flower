@@ -15,22 +15,28 @@ import {
   type Site,
   type Status,
 } from '../lib/plan'
+import { clearSummary } from '../lib/clear'
+import { ClearBar, ShowCleared } from './ClearBar'
 
 const STATUS_LABEL: Record<Status, string> = { 'to buy': 'To buy', bought: 'Bought', planted: 'Planted', skipped: 'Skipped' }
 const KINDS = ['perennial flower', 'tree or shrub', 'edible', 'bulb', 'fern', 'annual from seed', 'ornamental']
 
 // Seasons: the fall and spring lists, grouped by nursery so each group is a trip.
-// Mark things bought and planted as you go; tap a plant to change how many, where,
-// or from which nursery, or to take it off the list.
+// Tick plants off as you buy them, then "Clear N checked off" hides them (they stay
+// bought, ready to mark planted). Tap a plant to change how many, where, or from
+// which nursery, or to take it off the list.
 export default function Seasons({ userId }: { userId: string }) {
-  const { data, error, pending, reload, update, remove, add, addPlant } = useSeasons(userId)
+  const { data, error, pending, reload, update, remove, add, addPlant, clear } = useSeasons(userId)
+  const [showCleared, setShowCleared] = useState(false)
   const [season, setSeason] = useState(() => currentSeason())
   const [onlyToBuy, setOnlyToBuy] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
 
   const items = data?.items.filter((i) => i.season === season) ?? []
-  const shown = onlyToBuy ? items.filter((i) => i.status === 'to buy') : items
+  const shown = items.filter((i) => (!onlyToBuy || i.status === 'to buy') && (showCleared || !i.cleared_at))
+  const clearable = items.filter((i) => i.status !== 'to buy' && !i.cleared_at)
+  const clearedCount = items.filter((i) => i.cleared_at).length
   const counts = countByStatus(items)
   const groups = data ? groupByNursery(shown, data.nurseries, data.plants) : []
   const summary = STATUSES.filter((s) => counts[s] > 0)
@@ -125,6 +131,7 @@ export default function Seasons({ userId }: { userId: string }) {
           ))}
 
           {onlyToBuy && items.length > 0 && shown.length === 0 && <p className="empty">Everything on this list is bought.</p>}
+          <ShowCleared count={clearedCount} shown={showCleared} onToggle={() => setShowCleared(!showCleared)} />
 
           {adding ? (
             <AddForm
@@ -144,6 +151,13 @@ export default function Seasons({ userId }: { userId: string }) {
               Add a plant to {seasonLabel(season)}
             </button>
           )}
+          <ClearBar
+            summary={clearSummary(
+              clearable.map((i) => i.status_by),
+              userId,
+            )}
+            onClear={() => clear(clearable.map((i) => i.id))}
+          />
         </>
       )}
     </>
@@ -191,6 +205,24 @@ function PlanRow({
   return (
     <li className="plan-item" data-status={item.status}>
       <div className="plan-row">
+        <button
+          type="button"
+          className="task-check"
+          role="checkbox"
+          aria-checked={item.status !== 'to buy'}
+          aria-disabled={item.status === 'planted' || item.status === 'skipped'}
+          aria-label={item.status === 'to buy' ? `Bought: ${name}` : `${STATUS_LABEL[item.status]}: ${name}`}
+          onClick={() => {
+            if (item.status === 'to buy') onChange({ status: 'bought' })
+            else if (item.status === 'bought') onChange({ status: 'to buy' })
+          }}
+        >
+          {item.status !== 'to buy' && (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" aria-hidden="true">
+              {item.status === 'skipped' ? <path d="M6 12h12" /> : <path d="M5 12.5l4.5 4.5L19 7.5" />}
+            </svg>
+          )}
+        </button>
         <button type="button" className="plan-main" aria-expanded={open} onClick={onToggle}>
           <span className="plan-name">{name}</span>
           {plant?.latin && <span className="latin plan-latin">{plant.latin}</span>}
@@ -199,9 +231,9 @@ function PlanRow({
             {meta}
           </span>
         </button>
-        {next && (
-          <button type="button" className="choice small" aria-label={`Mark ${next}: ${name}`} onClick={() => onChange({ status: next })}>
-            Mark {next}
+        {next === 'planted' && (
+          <button type="button" className="choice small" aria-label={`Mark planted: ${name}`} onClick={() => onChange({ status: next })}>
+            Mark planted
           </button>
         )}
       </div>

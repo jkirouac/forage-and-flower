@@ -2,6 +2,8 @@ import { useRef, useState, type PointerEvent } from 'react'
 import { useGarden } from '../lib/garden'
 import { buildMonth, nextMonth, SECTIONS, type Item, type Outcome, type Section } from '../lib/month'
 import { MONTHS, monthHeading } from '../lib/season'
+import { clearSummary } from '../lib/clear'
+import { ClearBar, ShowCleared } from './ClearBar'
 
 const LABELS: Record<Section, string> = { do: 'Do', plant: 'Plant', buy: 'Buy' }
 type Filter = Section | 'all'
@@ -16,6 +18,7 @@ const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
 
 // This month: the shared checklist under Do / Plant / Buy. Tap the circle or swipe
 // right to finish; swipe left (or tap the arrow) to push a task to next month.
+// "Clear N checked off" then hides finished and pushed tasks; ticks are kept.
 export default function Month({ userId }: { userId: string }) {
   // The date when the screen opened; reopening the app picks up a new month.
   const [now] = useState(() => new Date())
@@ -23,11 +26,16 @@ export default function Month({ userId }: { userId: string }) {
   const month = now.getMonth() + 1
   const next = nextMonth(year, month)
   const { month: monthName, theme } = monthHeading(now)
-  const { garden, error, pending, reload, tick } = useGarden(userId, year)
+  const { garden, error, pending, reload, tick, clear } = useGarden(userId, year)
   const [filter, setFilter] = useState<Filter>('all')
+  const [showCleared, setShowCleared] = useState(false)
 
   const list = garden ? buildMonth(garden.tasks, garden.checks, year, month) : null
   const shown = SECTIONS.filter((s) => filter === 'all' || filter === s)
+  const all = list ? SECTIONS.flatMap((s) => list[s]) : []
+  const clearable = all.filter((i) => i.check && !i.check.cleared_at)
+  const clearedCount = all.filter((i) => i.check?.cleared_at).length
+  const visible = (items: Item[]) => (showCleared ? items : items.filter((i) => !i.check?.cleared_at))
 
   return (
     <>
@@ -84,11 +92,11 @@ export default function Month({ userId }: { userId: string }) {
           {shown.map((section) => (
             <section key={section} className="block">
               <h2 className="label">{LABELS[section]}</h2>
-              {list[section].length === 0 ? (
-                <p className="empty">{EMPTY[section]}</p>
+              {visible(list[section]).length === 0 ? (
+                <p className="empty">{list[section].length ? 'All cleared.' : EMPTY[section]}</p>
               ) : (
                 <ul className="tasks">
-                  {list[section].map((item) => (
+                  {visible(list[section]).map((item) => (
                     <TaskRow
                       key={item.task.id}
                       item={item}
@@ -101,6 +109,20 @@ export default function Month({ userId }: { userId: string }) {
               )}
             </section>
           ))}
+          <ShowCleared count={clearedCount} shown={showCleared} onToggle={() => setShowCleared(!showCleared)} />
+          <ClearBar
+            summary={clearSummary(
+              clearable.map((i) => i.check?.done_by ?? null),
+              userId,
+            )}
+            onClear={() =>
+              clear(
+                clearable.map((i) => i.task.id),
+                year,
+                month,
+              )
+            }
+          />
         </>
       )}
     </>

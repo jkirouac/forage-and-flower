@@ -18,6 +18,9 @@ export type Op =
   | { kind: 'plan-update'; id: string; patch: Record<string, unknown> }
   | { kind: 'plan-delete'; id: string }
   | { kind: 'plant-insert'; row: Record<string, unknown> & { id: string } }
+  // Clear checked off: hide these ticks (one month) or plan items. Nothing is deleted.
+  | { kind: 'clear-checks'; gardenId: string; year: number; month: number; taskIds: string[]; at: string }
+  | { kind: 'plan-clear'; ids: string[]; at: string }
 
 // Folds a new change into what's waiting, so the outbox never sends work that a
 // later change undoes: a second tick on the same task and month replaces the

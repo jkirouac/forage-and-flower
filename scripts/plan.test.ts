@@ -14,6 +14,7 @@ import {
   type PlanItem,
 } from '../src/lib/plan.ts'
 import { addOp, type Op } from '../src/lib/ops.ts'
+import { clearSummary } from '../src/lib/clear.ts'
 
 const item = (id: string, extra: Partial<PlanItem> = {}): PlanItem => ({
   id,
@@ -120,4 +121,14 @@ test('outbox: edits to a saved item merge, and deleting it replaces them', () =>
   assert.deepEqual(ops[0].kind === 'plan-update' && ops[0].patch, { status: 'bought', qty_min: 2 })
   ops = addOp(ops, { kind: 'plan-delete', id: 's' })
   assert.deepEqual(ops, [{ kind: 'plan-delete', id: 's' }])
+})
+
+test('clear: the button is yours once you checked something off; others need a confirm', () => {
+  assert.deepEqual(clearSummary(['me', 'me', 'them'], 'me'), { mine: 2, others: 1, total: 3 })
+  assert.deepEqual(clearSummary(['them'], 'me'), { mine: 0, others: 1, total: 1 })
+})
+
+test('clear: unknown names count as yours', () => {
+  assert.deepEqual(clearSummary([null, 'them'], 'me'), { mine: 1, others: 1, total: 2 })
+  assert.deepEqual(clearSummary(['them'], null), { mine: 1, others: 0, total: 1 })
 })

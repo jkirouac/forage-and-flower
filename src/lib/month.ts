@@ -27,6 +27,7 @@ export interface Check {
   outcome: Outcome
   done_by: string | null
   done_at: string
+  cleared_at: string | null // hidden from the list since then (Clear checked off)
 }
 
 export interface Item {

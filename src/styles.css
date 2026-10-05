@@ -464,6 +464,47 @@ h1 {
   background: var(--surface);
 }
 
+/* Clear checked off: pinned above the tab bar */
+.clear-bar {
+  position: sticky;
+  /* Just above the tab bar, which is also pinned to the bottom. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 82px);
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.12);
+}
+.clear-button {
+  justify-self: stretch;
+}
+.clear-ask {
+  margin: 0;
+}
+.plan-row .task-check {
+  margin: 0 0 0 12px;
+}
+.plan-row .plan-main {
+  padding-left: 0;
+}
+.plan-item[data-status='to buy'] .task-check {
+  background: none;
+}
+.plan-item:not([data-status='to buy']) .task-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.plan-item[data-status='skipped'] .task-check {
+  background: var(--muted);
+  border-color: var(--muted);
+}
+.task-check[aria-disabled='true'] {
+  cursor: default;
+}
+
 /* Bottom tab bar */
 .tabbar {
   position: sticky;

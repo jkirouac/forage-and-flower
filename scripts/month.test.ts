@@ -22,6 +22,7 @@ const check = (task_id: string, year: number, month: number, outcome: Check['out
   outcome,
   done_by: 'u1',
   done_at: '2026-10-05T00:00:00Z',
+  cleared_at: null,
 })
 
 test('a month shows its own tasks and every-month tasks, by section', () => {

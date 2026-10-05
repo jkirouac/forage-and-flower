@@ -16,6 +16,8 @@ export interface PlanItem {
   nursery_id: string | null
   spot: string | null
   notes: string | null
+  cleared_at: string | null // hidden from the list since then (Clear checked off)
+  status_by: string | null // who last changed the status
 }
 
 export interface Plant {
