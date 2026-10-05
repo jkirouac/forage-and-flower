@@ -42,7 +42,7 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 | Swipe right to finish; swipe left to push to next month. Pushed tasks are never shown as overdue. | Todoist | This month | Built |
 | A 12-month bar on every plant, with rows for planting, flowering and pollinator use. | Merlin Bird ID | Plant pages, Plant now cards | Built (plant pages) |
 | Spring and fall lists grouped by nursery, so each group is a shopping trip. | Our own shopping lists | Seasons | Built |
-| Each pollinator pick says why in plain words, e.g. "Winter food for western bumblebee queens (threatened)". | RHS Grow, Calscape | Pollinator picks, plant pages | Built (plant pages) |
+| Each pollinator pick says why in plain words, e.g. "Winter food for western bumblebee queens (threatened)". | RHS Grow, Calscape | Pollinator picks, plant pages | Built |
 | Site rules on the plant page, in a ruled box: "No biochar here", "Fir mulch, not alder". | Seed packet backs | Plant pages | Built |
 | A planting log per plant, filterable by action (planted, moved, divided, died). | Planta | Plant pages | Built |
 | Kind copy, and a monthly summary against your own past: "6 natives planted this fall, up from 2 last fall." | Gentler Streak | This month, monthly email | Planned |
@@ -65,7 +65,7 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 1. **This month.** A kicker line ("OCTOBER · VICTORIA 9a"), a serif title for the season's theme ("Fall planting window"), then the checklist under Do / Plant / Buy, then "Plant now" cards. Chips filter: All · Do · Plant · Buy.
 2. **Seasons.** Fall and spring lists. Each plant shows quantity, site and status (to buy, bought, planted), grouped by nursery.
 3. **Plants.** Your plants first, then the wider ranked lists. A plant page holds: common and Latin name, 12-month bar, sites, why it's recommended, where to buy, site rules, and the planting log.
-4. **Pollinator picks.** Plants ranked by support for threatened species, led by the threat-status tiebreaker in `perennial-flowers.md`. The year ring sits at the top, with a plain list below it for accessibility.
+4. **Pollinator picks.** Plants ranked by support for threatened species, led by the threat-status tiebreaker in `perennial-flowers.md`. The year ring sits at the top, with a plain list below it for accessibility. **Built:** all 48 ranked plants; the ring's outer band is the rubric's critical windows (Dec–Mar winter, Feb–Apr emerging queens, Oct–Dec late season) and its petals the picks in flower each month, for our garden or all picks.
 
 Bottom navigation: Month · Seasons · Plants · Pollinators.
 

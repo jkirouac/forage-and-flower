@@ -81,7 +81,7 @@ function Garden({ userId }: { userId: string }) {
         {screen === 'seasons' && <Seasons userId={userId} />}
         {screen === 'plants' && <Plants userId={userId} />}
         {screen === 'plant' && plantId && <PlantPage key={plantId} userId={userId} plantId={plantId} />}
-        {screen === 'pollinators' && <Pollinators />}
+        {screen === 'pollinators' && <Pollinators userId={userId} />}
         {screen === 'settings' && <Settings />}
       </main>
       <nav className="tabbar" aria-label="Sections">

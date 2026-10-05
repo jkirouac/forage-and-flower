@@ -2,7 +2,7 @@
 
 The plan for building **Forage & Flower**, the shared garden app for a two-person household. How it looks is in `DESIGN.md`. The garden content it starts from is the household's markdown garden notes, kept outside this repo.
 
-October 2026. Steps 1 to 5 of the build order are done.
+October 2026. Steps 1 to 6 of the build order are done.
 
 ## Purpose
 
@@ -82,7 +82,7 @@ A one-time import script reads the garden notes and writes to the app, then prin
 | `planning/schedule.md` (and the reminder job's task file, to cross-check) | `tasks` |
 | `plants/shopping-list-2026-fall.md`, `shopping-list-2027-spring.md` | `plan_items` |
 | `planning/suppliers.md`, `plants/nursery-routing-spring-2026.md` | `nurseries` |
-| Plants on your plan and in the schedule, plus the threatened-species plants from `plants/perennial-flowers.md` | `plants` (start small, decided 2026-10-03; the other ranked files come later) |
+| Plants on your plan and in the schedule, plus every ranked plant in `plants/perennial-flowers.md` (all 48, added 2026-10-06) | `plants` (the other ranked files come later) |
 | The notes' site list and biochar, castings and mulch rules | `sites`, `rules` |
 
 Before the import runs, anything the script can't place cleanly (a plant at a site that doesn't exist, a quantity like "2–3") gets a decision. Answers are kept in a private decisions file, so a re-run applies them instead of asking again. **Done 2026-10-03:** every question answered.
@@ -100,7 +100,7 @@ Each step ends with something you can use.
 3. **This month.** The checklist under Do / Plant / Buy, initials on ticks, swipe to finish or push to next month, works offline. This is the screen you'll use weekly, so it comes first. **Done.**
 4. **Seasons.** Fall and spring lists grouped by nursery. Edit any item in place: quantity, site, nursery, status (to buy, bought, planted, skipped). Add a plant to a season, or remove one. This is where the lists get corrected, since spring 2026 purchases weren't reviewed before the import. **Done.**
 5. **Plant pages.** The 12-month bar, the rules box, where to buy, and the planting log. Recording a planting from here also ticks the matching task. **Done.**
-6. **Pollinator picks.** The ranked list with reasons, and the year ring with a plain list beneath it.
+6. **Pollinator picks.** The ranked list with reasons, and the year ring with a plain list beneath it. **Done.**
 7. **Monthly email.** The function that builds the email, its token, and a change to the reminder job to fetch from it instead of its task file. Then retire the task file.
 
 **Checks at every step:** a phone-size walkthrough with screenshots, the privacy check, and once colours are set, a contrast check.

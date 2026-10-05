@@ -416,6 +416,11 @@ const THREAT = [
   ['medium', /Solidago/i, null, null, 'Garry oak meadow forage; late-summer food for specialist bees'],
   ['medium', /Eriogonum/i, null, null, 'Garry oak meadow forage; blue butterfly larval host'],
   ['medium', /Sedum spathulifolium/i, 'Sedum spathulifolium', 'Broadleaf stonecrop', "Larval host for Moss's elfin, a regionally tracked butterfly"],
+  // Also named in the tiebreaker; no common name, so they're only tagged when ranked.
+  ['high', /Asclepias|Swamp Milkweed/i, null, null, 'Larval host for the monarch (COSEWIC Special Concern, globally Endangered)'],
+  ['medium', /Penstemon/i, null, null, 'Nectar for the rufous hummingbird (COSEWIC Special Concern)'],
+  ['medium', /Dicentra|Bleeding Heart/i, null, null, 'Spring nectar for the rufous hummingbird (COSEWIC Special Concern), Mar–May'],
+  ['medium', /Monarda|Bee Balm/i, null, null, 'Nectar for the rufous hummingbird (COSEWIC Special Concern)'],
 ]
 
 // Threatened-species plants that aren't on a list yet still belong in Pollinator picks.
@@ -465,6 +470,55 @@ for (const p of plants.values()) {
     p.bloom_months = calendar.filter((c) => names.some((n) => c.text.includes(n))).map((c) => c.month)
   }
 }
+// The rest of the Stack Ranking, so Pollinator picks runs 1 to 48 (added 2026-10-06).
+// Catalogue only: these plants aren't on a list. Names come as "*Latin* (common)",
+// "Common (Latin)", "Common (another common name)" or just a name; ★ marks a
+// self-seeding annual.
+const LATIN_NAME = /^([A-Z][a-z]+( [a-z][a-z-]+)?|[A-Z]\. [a-z][a-z-]+)$/
+function rankedNames(raw) {
+  const annual = raw.includes('★')
+  const s = raw.replace('★', '').trim()
+  const italic = s.match(/^\*([^*]+)\*\s*\(([^)]+)\)$/)
+  if (italic) return { common: italic[2][0].toUpperCase() + italic[2].slice(1), latin: italic[1], annual }
+  const m = s.match(/^(.*?)\s*\(([^)]+)\)$/)
+  if (m) {
+    const inside = m[2].replace(/,.*$/, '').trim()
+    // "Phacelia (P. tanacetifolia)": spell the genus out.
+    if (LATIN_NAME.test(inside)) return { common: m[1], latin: inside.replace(/^[A-Z]\. /, `${m[1].split(' ')[0]} `), annual }
+    return { common: s, latin: null, annual }
+  }
+  return { common: s, latin: LATIN_NAME.test(s) ? s : null, annual }
+}
+const rankedTaken = new Set([...plants.values()].map((p) => p.rank).filter(Boolean))
+for (const row of ranking.rows) {
+  const rank = Number(row.rank)
+  if (!rank || rankedTaken.has(rank)) continue
+  const raw = (row.plant ?? '').trim()
+  const { common, latin, annual } = rankedNames(raw)
+  const why = plain(row.why ?? '').text
+  const p = addPlant({
+    common,
+    latin,
+    kind: annual ? 'annual from seed' : 'perennial flower',
+    native: /\bBC (coastal )?native\b/i.test(why),
+    source: 'plants/perennial-flowers.md',
+  })
+  p.rank = rank
+  p.why = why
+  // The Bloom Calendar by name first ("Tall Yarrow 'Coronation Gold'" is listed as
+  // "Tall Yarrow"): a range in "why" is sometimes seedheads or winter form. Then the
+  // range in "why", then the genus in the calendar ("Penstemon").
+  const inCalendar = (names) =>
+    calendar.filter((c) => names.some((n) => n && n.length > 3 && c.text.includes(n))).map((c) => c.month)
+  const before = p.common.split(/\s*['(]/)[0].toLowerCase()
+  p.bloom_months = inCalendar([p.common.toLowerCase(), p.latin?.toLowerCase(), before])
+  if (p.bloom_months.length === 0) p.bloom_months = monthRange(why)
+  if (p.bloom_months.length === 0 && p.latin) p.bloom_months = inCalendar([p.latin.split(' ')[0].toLowerCase()])
+  const t = THREAT.find(([, re]) => re.test(`${raw} ${p.common} ${p.latin ?? ''}`))
+  if (t) p.threat = { tier: t[0], reason: t[4] }
+  note('inferred', `Ranked #${rank}: added ${p.common}${p.latin ? ` (${p.latin})` : ''}, ${p.kind}${p.native ? ', BC native' : ''}, blooms ${p.bloom_months.join(',') || 'unknown'}${p.threat ? `, ${p.threat.tier} threat tier` : ''}.`)
+}
+
 for (const p of plants.values()) {
   if (p.threat && p.bloom_months.length === 0) note('decide', `${p.common}: no bloom months found in the ranking. Add them for the 12-month bar.`)
 }

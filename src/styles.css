@@ -644,6 +644,118 @@ h1 {
   margin: 0;
 }
 
+/* Pollinator picks: the year ring and the ranking */
+.year-ring {
+  width: 100%;
+  max-width: 300px;
+  justify-self: center;
+}
+.ring-critical {
+  fill: var(--pollen);
+}
+.ring-quiet {
+  fill: var(--line);
+}
+.ring-track {
+  fill: var(--line);
+  opacity: 0.35;
+}
+.ring-bloom {
+  fill: var(--bloom);
+}
+.ring-now {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+.ring-label {
+  font: 600 11px var(--body);
+  fill: var(--muted);
+}
+.ring-label.now {
+  fill: var(--ink);
+}
+.ring-center {
+  font: 600 18px var(--display);
+  fill: var(--ink);
+}
+.ring-center-sub {
+  font: 12px var(--body);
+  fill: var(--muted);
+}
+.ring-key {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.key-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.key-swatch.pollen {
+  background: var(--pollen);
+}
+.key-swatch.bloom {
+  background: var(--bloom);
+  margin-left: 8px;
+}
+.month-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.month-list li {
+  padding-left: 12px;
+  border-left: 3px solid var(--line);
+}
+.month-list li[data-critical] {
+  border-left-color: var(--pollen);
+}
+.month-list li[aria-current] .month-name {
+  font-weight: 700;
+}
+.month-name {
+  margin: 0;
+}
+.critical-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.plant-link.pick {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.pick-rank {
+  flex: none;
+  min-width: 1.8rem;
+  font: 600 1.2rem/1.4 var(--display);
+  color: var(--accent);
+}
+.pick-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.pick-reason {
+  font-size: 0.9rem;
+}
+
 /* Bottom tab bar */
 .tabbar {
   position: sticky;
