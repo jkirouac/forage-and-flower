@@ -101,6 +101,8 @@ Deno.serve(async (req) => {
     global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
   })
   const garden = await db.from('gardens').select('id, region, zone, last_frost, first_frost').limit(1).maybeSingle()
+  // Signed out: the database refuses the anonymous role outright.
+  if (garden.error?.code === '42501') return json({ error: 'Not part of a garden.' }, 403)
   if (garden.error) return json({ error: "Couldn't read the garden." }, 500)
   if (!garden.data) return json({ error: 'Not part of a garden.' }, 403)
   const gardenId = garden.data.id
