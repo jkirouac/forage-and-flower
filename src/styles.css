@@ -801,6 +801,62 @@ h1 {
   color: var(--muted);
 }
 
+/* Plants filters: labelled rows of chips that scroll sideways (Mealboard's pattern;
+   wrapping would push the list off a phone screen). */
+.filter-row {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.filter-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 0 -16px;
+  padding: 2px 16px 6px;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%);
+}
+.filter-chips::-webkit-scrollbar {
+  display: none;
+}
+.filter-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 500 0.88rem var(--body);
+  cursor: pointer;
+}
+.filter-chip svg {
+  color: var(--accent);
+}
+.filter-chip[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.filter-chip[aria-pressed='true'] svg {
+  color: var(--accent-ink);
+}
+.filter-summary {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.feeds-strip {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--accent);
+}
+
 /* The 12-month bar: one row each for planting, flowering and pollinators. */
 .month-bar {
   display: grid;

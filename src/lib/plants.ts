@@ -152,9 +152,14 @@ const TRAITS: [RegExp, Trait][] = [
   [/seedhead/, { key: 'seedheads', label: 'Winter seedheads' }],
 ]
 
-// What the plant feeds and what it's like, for the icon rows on its page. Who it
-// feeds comes from the notes' Pollinators column (or the "why" when there's none).
-export function plantTraits(plant: Pick<FullPlant, 'pollinators' | 'why' | 'native'>) {
+// Fruit by name, for plants whose notes don't say "edible" (the fruit trees).
+const FRUIT = /cherr|(^|[^a-z])figs?([^a-z]|$)|loquat|plum|apple|pear|huckleberr|blueberr|grape/
+
+// What the plant feeds and what it's like, for the icon rows on its page and the
+// Plants filters. Who it feeds comes from the notes' Pollinators column (or the
+// "why" when there's none). Edible: an edible kind, "edible" (or tea, berries…) in
+// the why, or a fruit by name.
+export function plantTraits(plant: Pick<FullPlant, 'pollinators' | 'why' | 'native'> & Partial<Pick<FullPlant, 'kind' | 'common'>>) {
   const who = (plant.pollinators ?? plant.why ?? '').toLowerCase()
   const what = (plant.why ?? '').toLowerCase()
   const pollinators = POLLINATORS.filter(([re]) => re.test(who)).map(([, t]) => t)
@@ -162,6 +167,8 @@ export function plantTraits(plant: Pick<FullPlant, 'pollinators' | 'why' | 'nati
     ...(plant.native ? [{ key: 'native', label: 'BC native' }] : []),
     ...TRAITS.filter(([re]) => re.test(what)).map(([, t]) => t),
   ]
+  const edible = plant.kind === 'edible' || FRUIT.test((plant.common ?? '').toLowerCase())
+  if (edible && !traits.some((t) => t.key === 'edible')) traits.push({ key: 'edible', label: 'Edible' })
   return { pollinators, traits }
 }
 
@@ -270,4 +277,60 @@ export function linkPlantNames(title: string, plants: Pick<FullPlant, 'id' | 'co
   }
   if (at < title.length) parts.push({ text: title.slice(at) })
   return parts
+}
+
+// ---------- Plants filters (chips in two rows, as in Mealboard) ----------
+
+export interface PlantFilter {
+  key: string
+  label: string // on the chip
+  icon: string // Icons.tsx name
+  row: 'feeds' | 'traits'
+  traits: string[] // matches a plant with any of these trait keys
+  phrase: string // for the summary line
+}
+
+export const FILTERS: PlantFilter[] = [
+  { key: 'bees', label: 'Bees', icon: 'bee', row: 'feeds', traits: ['bee', 'bumblebee', 'specialist'], phrase: 'bees' },
+  { key: 'butterflies', label: 'Butterflies', icon: 'butterfly', row: 'feeds', traits: ['butterfly'], phrase: 'butterflies' },
+  { key: 'hummingbirds', label: 'Hummingbirds', icon: 'hummingbird', row: 'feeds', traits: ['hummingbird'], phrase: 'hummingbirds' },
+  { key: 'caterpillars', label: 'Caterpillars', icon: 'caterpillar', row: 'feeds', traits: ['caterpillar'], phrase: 'caterpillars' },
+  { key: 'humans', label: 'Humans', icon: 'edible', row: 'feeds', traits: ['edible'], phrase: 'us' },
+  { key: 'drought', label: 'Drought-tolerant', icon: 'drought', row: 'traits', traits: ['drought'], phrase: 'are drought-tolerant' },
+  { key: 'nest', label: 'Nesting stems', icon: 'nest', row: 'traits', traits: ['nest'], phrase: 'have nesting stems for bees' },
+  { key: 'native', label: 'BC native', icon: 'native', row: 'traits', traits: ['native'], phrase: 'are BC natives' },
+  { key: 'evergreen', label: 'Evergreen', icon: 'evergreen', row: 'traits', traits: ['evergreen'], phrase: 'are evergreen' },
+  { key: 'shade', label: 'Part shade', icon: 'shade', row: 'traits', traits: ['shade'], phrase: 'take part shade' },
+]
+
+type Traitable = Parameters<typeof plantTraits>[0]
+
+const traitKeys = (plant: Traitable) => {
+  const t = plantTraits(plant)
+  return new Set([...t.pollinators, ...t.traits].map((x) => x.key))
+}
+
+// Every selected chip must match (AND), as in Mealboard.
+export function matchesFilters(plant: Traitable, selected: string[]) {
+  if (selected.length === 0) return true
+  const keys = traitKeys(plant)
+  return selected.every((f) => FILTERS.find((x) => x.key === f)?.traits.some((t) => keys.has(t)) ?? true)
+}
+
+// The chips worth showing: those that, with what's already chosen, still match a
+// plant. Chosen chips always show, so an active filter never disappears.
+export function availableFilters(plants: Traitable[], selected: string[]) {
+  return FILTERS.filter((f) => selected.includes(f.key) || plants.some((p) => matchesFilters(p, [...selected, f.key])))
+}
+
+// "12 plants feed bees and butterflies and are drought-tolerant."
+export function describeFilters(count: number, selected: string[]) {
+  const chosen = FILTERS.filter((f) => selected.includes(f.key))
+  const feeds = chosen.filter((f) => f.row === 'feeds').map((f) => f.phrase)
+  const traits = chosen.filter((f) => f.row === 'traits').map((f) => f.phrase)
+  const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
+  const parts = [feeds.length ? `feed ${list(feeds)}` : '', list(traits)].filter(Boolean)
+  const what = count === 1 ? '1 plant' : `${count} plants`
+  const verb = (x: string) => (count === 1 ? x.replace(/^feed /, 'feeds ').replace(/^are /, 'is ').replace(/^have /, 'has ').replace(/^take /, 'takes ') : x)
+  return `${what} ${parts.map(verb).join(' and ')}.`
 }

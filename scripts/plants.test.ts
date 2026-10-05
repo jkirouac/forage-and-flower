@@ -9,7 +9,10 @@ import {
   splitPlants,
   taskForPlanting,
   taskNamesPlant,
+  availableFilters,
+  describeFilters,
   linkPlantNames,
+  matchesFilters,
   plantTraits,
   plantsByPlace,
   summarizeRules,
@@ -204,4 +207,35 @@ test('plant names in a task title become links, longest name first', () => {
   assert.equal(linked('Light trim of nepeta where it smothers'), 'Light trim of [nepeta:nepeta] where it smothers')
   assert.equal(linked('Harvest figs'), 'Harvest [figs:fig]')
   assert.equal(linked('Configure the bin'), 'Configure the bin')
+})
+
+test('edible: an edible kind, the why, or a fruit by name', () => {
+  const edible = (extra: Partial<FullPlant>) => plantTraits(plant('x', extra)).traits.some((t) => t.key === 'edible')
+  assert.equal(edible({ common: 'Good King Henry', kind: 'edible' }), true)
+  assert.equal(edible({ common: "Sour Cherry 'Evans (Bali)'", kind: 'tree or shrub' }), true)
+  assert.equal(edible({ common: 'Loquat', kind: 'tree or shrub' }), true)
+  assert.equal(edible({ common: 'Fig', kind: 'tree or shrub' }), true)
+  assert.equal(edible({ common: 'Agastache', why: 'drought-tolerant; edible/tea' }), true)
+  assert.equal(edible({ common: 'Snowberry', kind: 'tree or shrub' }), false)
+  assert.equal(edible({ common: 'Configure', kind: 'perennial flower' }), false)
+})
+
+test('filters: every chosen chip must match; unusable chips are hidden, chosen ones stay', () => {
+  const plants = [
+    plant('Aster', { pollinators: 'bees, butterflies', why: 'drought-tolerant' }),
+    plant('Salvia', { pollinators: 'hummingbirds, bumblebees' }),
+    plant('Kale', { kind: 'edible' }),
+  ]
+  assert.deepEqual(plants.filter((p) => matchesFilters(p, ['bees'])).map((p) => p.common), ['Aster', 'Salvia'])
+  assert.deepEqual(plants.filter((p) => matchesFilters(p, ['bees', 'drought'])).map((p) => p.common), ['Aster'])
+  assert.deepEqual(plants.filter((p) => matchesFilters(p, ['humans'])).map((p) => p.common), ['Kale'])
+  const shown = availableFilters(plants, ['hummingbirds']).map((f) => f.key)
+  assert.deepEqual(shown, ['bees', 'hummingbirds'])
+  assert.ok(availableFilters([], ['nest']).some((f) => f.key === 'nest'))
+})
+
+test('the summary line reads like a sentence', () => {
+  assert.equal(describeFilters(12, ['bees', 'drought']), '12 plants feed bees and are drought-tolerant.')
+  assert.equal(describeFilters(1, ['bees', 'butterflies', 'nest']), '1 plant feeds bees and butterflies and has nesting stems for bees.')
+  assert.equal(describeFilters(3, ['humans']), '3 plants feed us.')
 })
