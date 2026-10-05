@@ -30,3 +30,6 @@ design-previews/
 
 # Local Claude notes
 CLAUDE.local.md
+
+.vercel
+.env*

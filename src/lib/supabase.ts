@@ -2,7 +2,7 @@ import { createClient, type Session } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 
 // Public by design: the anon key only allows what row-level security permits.
-// Set at build time (repo variables in the deploy workflow).
+// Set at build time (environment variables on the Vercel project).
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
