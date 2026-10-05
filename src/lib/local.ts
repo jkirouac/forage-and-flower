@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { clearOutbox, flush, pendingCount } from './outbox'
 import { supabase } from './supabase'
 
-export const CACHES = { garden: 'ff-garden', seasons: 'ff-seasons' } as const
+export const CACHES = { garden: 'ff-garden', seasons: 'ff-seasons', plants: 'ff-plants' } as const
 
 export function readJson<T>(key: string, fallback: T): T {
   try {

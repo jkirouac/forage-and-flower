@@ -84,6 +84,10 @@ async function send(op: Op) {
         .in('task_id', op.taskIds)
     case 'plan-clear':
       return db.from('plan_items').update({ cleared_at: op.at }).in('id', op.ids)
+    case 'planting-insert':
+      return db.from('plantings').upsert(op.row, { onConflict: 'id', ignoreDuplicates: true })
+    case 'planting-delete':
+      return db.from('plantings').delete().eq('id', op.id)
   }
 }
 

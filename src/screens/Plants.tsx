@@ -1,5 +1,22 @@
-// Plants: your plants first, then the wider ranked lists.
-export default function Plants() {
+import { useState } from 'react'
+import { useCatalogue } from '../lib/catalogue'
+import { useSeasons } from '../lib/seasons'
+import { seasonLabel, type PlanItem } from '../lib/plan'
+import { matchesSearch, splitPlants, type FullPlant, type Planting } from '../lib/plants'
+import { shortDate } from '../lib/season'
+
+// Plants: your plants first (on a list, or in the planting log), then the rest of
+// the catalogue. Each opens its plant page.
+export default function Plants({ userId }: { userId: string }) {
+  const { data, error, reload } = useCatalogue(userId)
+  const seasons = useSeasons(userId)
+  const [q, setQ] = useState('')
+
+  const items = seasons.data?.items ?? []
+  const yoursIds = new Set([...items.map((i) => i.plant_id), ...(data?.plantings ?? []).map((p) => p.plant_id)])
+  const { yours, others } = data ? splitPlants(data.plants, yoursIds) : { yours: [], others: [] }
+  const filter = (list: FullPlant[]) => list.filter((p) => matchesSearch(p, q))
+
   return (
     <>
       <header className="page-head">
@@ -7,11 +24,84 @@ export default function Plants() {
         <h1>Plants</h1>
       </header>
       <hr className="rule" />
-      <p className="empty">
-        Every plant on the plan will have a page here: when to plant it and when it flowers, the sites it belongs at, why
-        it's recommended, where to buy it, the rules for it (like <em>no biochar here</em>), and a record of what you've
-        planted.
-      </p>
+
+      {error && !data && (
+        <section className="block">
+          <p className="notice notice-error">{error}</p>
+          <button type="button" className="choice" onClick={reload}>
+            Try again
+          </button>
+        </section>
+      )}
+
+      {data && !data.gardenId && (
+        <p className="empty">This account isn't part of a garden yet. Ask whoever runs your garden to add you.</p>
+      )}
+
+      {data?.gardenId && (
+        <>
+          <label className="field">
+            Find a plant
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Common or Latin name" />
+          </label>
+          <PlantList
+            title="In our garden"
+            plants={filter(yours)}
+            items={items}
+            plantings={data.plantings}
+            empty={q ? 'None of ours match.' : 'Nothing on a list or in the log yet.'}
+          />
+          <PlantList title="More plants" plants={filter(others)} items={items} plantings={data.plantings} empty={q ? 'No others match.' : ''} />
+        </>
+      )}
     </>
   )
+}
+
+function PlantList({
+  title,
+  plants,
+  items,
+  plantings,
+  empty,
+}: {
+  title: string
+  plants: FullPlant[]
+  items: PlanItem[]
+  plantings: Planting[]
+  empty: string
+}) {
+  if (plants.length === 0 && !empty) return null
+  return (
+    <section className="block">
+      <h2 className="label">{title}</h2>
+      {plants.length === 0 ? (
+        <p className="empty">{empty}</p>
+      ) : (
+        <ul className="plant-list">
+          {plants.map((p) => (
+            <li key={p.id}>
+              <a className="plant-link" href={`#plant/${encodeURIComponent(p.id)}`}>
+                <span className="plan-name">{p.common}</span>
+                {p.latin && <span className="latin plan-latin">{p.latin}</span>}
+                <span className="plan-meta">{plantLine(p, items, plantings)}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+// "Perennial flower · BC native · Fall 2026: to buy" or "… · Planted 5 Oct".
+function plantLine(p: FullPlant, items: PlanItem[], plantings: Planting[]) {
+  const parts = [p.kind[0].toUpperCase() + p.kind.slice(1)]
+  if (p.native) parts.push('BC native')
+  if (p.threat_tier) parts.push('Pollinator pick')
+  const last = plantings.filter((x) => x.plant_id === p.id).sort((a, b) => b.happened_on.localeCompare(a.happened_on))[0]
+  const open = items.filter((i) => i.plant_id === p.id && i.status !== 'planted' && i.status !== 'skipped')
+  if (last) parts.push(`${last.action[0].toUpperCase() + last.action.slice(1)} ${shortDate(last.happened_on)}`)
+  else if (open.length) parts.push(`${seasonLabel(open[0].season)}: ${open[0].status}`)
+  return parts.join(' · ')
 }

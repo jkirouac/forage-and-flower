@@ -12,6 +12,7 @@
   --accent-soft: #e3e9dc;
   --lichen: #a3b18a; /* "done by" initials */
   --bloom: #c2553d; /* salmonberry: flowering months */
+  --pollen: #b8860b; /* ochre: pollinator months, year ring */
   --tabbar: #ede7d7;
 
   --display: 'Newsreader Variable', Georgia, 'Times New Roman', serif;
@@ -31,6 +32,7 @@
   --accent-soft: #2c3a30;
   --lichen: #4a5640; /* dark enough for light initials on it */
   --bloom: #e58a72;
+  --pollen: #e0b64a;
   --tabbar: #20231d;
 
   color-scheme: dark;
@@ -414,6 +416,7 @@ h1 {
 }
 .status-chip {
   flex: none;
+  white-space: nowrap;
   margin-right: 6px;
   padding: 1px 8px;
   border-radius: 999px;
@@ -503,6 +506,142 @@ h1 {
 }
 .task-check[aria-disabled='true'] {
   cursor: default;
+}
+
+/* Plants list and plant pages */
+.plant-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.plant-link {
+  display: grid;
+  gap: 1px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+.plan-item > .plant-link {
+  border: 0;
+}
+.plant-latin {
+  margin: 2px 0 0;
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+.threat-line {
+  margin: 0;
+}
+.threat-tier {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.plant-why {
+  margin: 0;
+  color: var(--muted);
+  max-width: 60ch;
+}
+
+/* The 12-month bar: one row each for planting, flowering and pollinators. */
+.month-bar {
+  display: grid;
+  gap: 4px;
+}
+.month-row {
+  display: grid;
+  grid-template-columns: 5.5rem repeat(12, minmax(0, 1fr));
+  gap: 2px;
+  align-items: center;
+}
+.month-head span {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.month-head span.now {
+  color: var(--ink);
+  font-weight: 700;
+}
+.month-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.cell {
+  height: 14px;
+  border-radius: 3px;
+  background: var(--line);
+  opacity: 0.6;
+}
+.cell.on {
+  opacity: 1;
+}
+.cell.on.plant {
+  background: var(--accent);
+}
+.cell.on.bloom {
+  background: var(--bloom);
+}
+.cell.on.pollen {
+  background: var(--pollen);
+}
+.cell.now {
+  outline: 1.5px solid var(--ink);
+  outline-offset: 1px;
+}
+
+/* Rules: a ruled box, like the back of a seed packet. */
+.rules-box {
+  list-style: none;
+  margin: 0;
+  padding: 4px 14px;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  background: var(--surface);
+}
+.rules-box li {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.rules-box li:first-child {
+  border-top: 0;
+}
+.rule-mark {
+  flex: none;
+  width: 1.1em;
+  font-weight: 700;
+  color: var(--bloom);
+}
+.rules-box li[data-verdict='yes'] .rule-mark {
+  color: var(--accent);
+}
+
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.log li {
+  display: grid;
+  gap: 2px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+}
+.log-line {
+  margin: 0;
 }
 
 /* Bottom tab bar */

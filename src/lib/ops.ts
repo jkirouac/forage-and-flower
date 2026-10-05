@@ -21,6 +21,8 @@ export type Op =
   // Clear checked off: hide these ticks (one month) or plan items. Nothing is deleted.
   | { kind: 'clear-checks'; gardenId: string; year: number; month: number; taskIds: string[]; at: string }
   | { kind: 'plan-clear'; ids: string[]; at: string }
+  | { kind: 'planting-insert'; row: Record<string, unknown> & { id: string } }
+  | { kind: 'planting-delete'; id: string }
 
 // Folds a new change into what's waiting, so the outbox never sends work that a
 // later change undoes: a second tick on the same task and month replaces the
@@ -46,6 +48,10 @@ export function addOp(ops: Op[], op: Op): Op[] {
         (o) => !((o.kind === 'plan-insert' && o.row.id === op.id) || (o.kind === 'plan-update' && o.id === op.id)),
       )
       return wasNew ? rest : [...rest, op]
+    }
+    case 'planting-delete': {
+      const wasNew = ops.some((o) => o.kind === 'planting-insert' && o.row.id === op.id)
+      return wasNew ? ops.filter((o) => !(o.kind === 'planting-insert' && o.row.id === op.id)) : [...ops, op]
     }
     default:
       return [...ops, op]

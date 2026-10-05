@@ -35,3 +35,8 @@ export function monthHeading(date = new Date()) {
   const m = date.getMonth()
   return { month: MONTHS[m], theme: THEMES[m] }
 }
+
+// "2026-10-05" -> "5 Oct" (or "Oct 5", by the phone's language).
+export function shortDate(day: string) {
+  return new Date(day + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+}
