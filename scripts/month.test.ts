@@ -1,7 +1,7 @@
 // node --test scripts/month.test.ts
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMonth, openCount, previousMonth, nextMonth, type Check, type Task } from '../src/lib/month.ts'
+import { buildMonth, openCount, previousMonth, nextMonth, upcomingMonths, shownItems, type Check, type Task } from '../src/lib/month.ts'
 
 const task = (id: string, extra: Partial<Task> = {}): Task => ({
   id,
@@ -92,4 +92,21 @@ test('open count leaves out done and pushed tasks', () => {
 test('month arithmetic wraps the year', () => {
   assert.deepEqual(previousMonth(2027, 1), { year: 2026, month: 12 })
   assert.deepEqual(nextMonth(2026, 12), { year: 2027, month: 1 })
+})
+
+test('upcoming months run on from this one, over the new year', () => {
+  assert.deepEqual(upcomingMonths(2026, 11, 3), [
+    { year: 2026, month: 11 },
+    { year: 2026, month: 12 },
+    { year: 2027, month: 1 },
+  ])
+})
+
+test('a pushed task leaves its month when the next month is on screen', () => {
+  const tasks = [task('mulch'), task('prune')]
+  const checks = [check('mulch', 2026, 10, 'pushed')]
+  const oct = buildMonth(tasks, checks, 2026, 10)
+  assert.deepEqual(shownItems(oct.do, true, false).map((i) => i.task.id), ['prune'])
+  assert.deepEqual(shownItems(oct.do, false, false).map((i) => i.task.id), ['mulch', 'prune'])
+  assert.equal(buildMonth(tasks, checks, 2026, 11).do[0].pushedFrom, 10)
 })

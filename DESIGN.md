@@ -40,6 +40,7 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 | One month list with three headings: **Do**, **Plant**, **Buy**. | Things 3 | This month | Built |
 | A small "Done by J" on each finished task, with the date. | Planta, Todoist | This month, plant history | Built (This month) |
 | Swipe right to finish; swipe left to push to next month. Pushed tasks are never shown as overdue. | Todoist | This month | Built |
+| Tap a card to open it in place; every swipe has a labelled button inside the open card, and nothing on the closed card moves a task. | Things 3 | This month | Built |
 | A 12-month bar on every plant, with rows for planting, flowering and pollinator use. | Merlin Bird ID | Plant pages, Plant now cards | Built (plant pages) |
 | Spring and fall lists grouped by nursery, so each group is a shopping trip. | Our own shopping lists | Seasons | Built |
 | Each pollinator pick says why in plain words, e.g. "Winter food for western bumblebee queens (threatened)". | RHS Grow, Calscape | Pollinator picks, plant pages | Built |
@@ -62,7 +63,7 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 
 ## Screens
 
-1. **This month.** A kicker line ("OCTOBER · VICTORIA 9a"), a serif title for the season's theme ("Fall planting window"), then the checklist under Do / Plant / Buy, then "Plant now" cards. Chips filter: All · Do · Plant · Buy.
+1. **This month.** A kicker line ("OCTOBER · VICTORIA 9a"), a serif title for the season's theme ("Fall planting window"), then this month and the next two under month headers (more on request), each with Do / Plant / Buy. A task moved on shows under next month's header ("From Oct"), not greyed out where it was. Tap a card to open it: the full note, the how-to link, links to the plants it names, and labelled Done / Move to November. **Buy** comes from the Seasons list being shopped for (fall Sep–Nov, spring Feb–May), one card per nursery that opens to its plants; ticking one marks it bought. Chips filter: All · Do · Plant · Buy. "Plant now" cards: Planned.
 2. **Seasons.** Fall and spring lists. Each plant shows quantity, site and status (to buy, bought, planted), grouped by nursery.
 3. **Plants.** Your plants first, then the wider ranked lists. A plant page holds: common and Latin name, 12-month bar, sites, why it's recommended, where to buy, site rules, and the planting log.
 4. **Pollinator picks.** Plants ranked by support for threatened species, led by the threat-status tiebreaker in `perennial-flowers.md`. The year ring sits at the top, with a plain list below it for accessibility. **Built:** all 48 ranked plants; the ring's outer band is the rubric's critical windows (Dec–Mar winter, Feb–Apr emerging queens, Oct–Dec late season) and its petals the picks in flower each month, for our garden or all picks.

@@ -83,3 +83,19 @@ export function buildMonth(tasks: Task[], checks: Check[], year: number, month: 
 export function openCount(list: MonthList) {
   return SECTIONS.reduce((n, s) => n + list[s].filter((i) => !i.check).length, 0)
 }
+
+// This month and the ones after it, for the month headers: [{2026, 10}, {2026, 11}, …].
+export function upcomingMonths(year: number, month: number, count: number) {
+  const out = [{ year, month }]
+  while (out.length < count) out.push(nextMonth(out[out.length - 1].year, out[out.length - 1].month))
+  return out
+}
+
+// What a month's section shows. A pushed task leaves its month once the next month
+// is on screen, since it shows there ("From Oct"); cleared ticks stay hidden unless
+// asked for.
+export function shownItems(items: Item[], nextVisible: boolean, showCleared: boolean) {
+  return items.filter(
+    (i) => !(i.check?.outcome === 'pushed' && nextVisible) && (showCleared || !i.check?.cleared_at),
+  )
+}

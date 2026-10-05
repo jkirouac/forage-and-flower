@@ -11,6 +11,7 @@ import {
   qtyLabel,
   seasonLabel,
   seasonOptions,
+  buyingSeason,
   type PlanItem,
 } from '../src/lib/plan.ts'
 import { addOp, type Op } from '../src/lib/ops.ts'
@@ -131,4 +132,13 @@ test('clear: the button is yours once you checked something off; others need a c
 test('clear: unknown names count as yours', () => {
   assert.deepEqual(clearSummary([null, 'them'], 'me'), { mine: 1, others: 1, total: 2 })
   assert.deepEqual(clearSummary(['them'], null), { mine: 1, others: 0, total: 1 })
+})
+
+test('the list being shopped for each month', () => {
+  assert.equal(buyingSeason(2026, 9), 'fall-2026')
+  assert.equal(buyingSeason(2026, 10), 'fall-2026')
+  assert.equal(buyingSeason(2026, 11), 'fall-2026')
+  assert.equal(buyingSeason(2027, 3), 'spring-2027')
+  assert.equal(buyingSeason(2027, 7), null)
+  assert.equal(buyingSeason(2026, 12), null)
 })

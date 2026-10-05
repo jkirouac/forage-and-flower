@@ -144,3 +144,12 @@ export function plantKey(common: string, taken: Set<string>) {
   for (let n = 2; taken.has(key); n++) key = `${base}-${n}`
   return key
 }
+
+// The list being shopped for in a month, for Buy on This month: the fall list from
+// September to November (natives and bulbs go in while the rains come), the spring
+// list from February to May. Other months have nothing to buy.
+export function buyingSeason(year: number, month: number): string | null {
+  if (month >= 9 && month <= 11) return `fall-${year}`
+  if (month >= 2 && month <= 5) return `spring-${year}`
+  return null
+}

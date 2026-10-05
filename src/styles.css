@@ -292,12 +292,18 @@ h1 {
   background: var(--accent);
   border-color: var(--accent);
 }
-.task-body {
+.task-open {
   flex: 1;
   min-width: 0;
   padding: 8px 0;
   display: grid;
   gap: 2px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 .task-title {
   margin: 0;
@@ -335,7 +341,7 @@ h1 {
   color: var(--ink);
   font-weight: 600;
 }
-.task-push {
+.task-chevron {
   flex: none;
   display: grid;
   place-items: center;
@@ -346,6 +352,64 @@ h1 {
   background: none;
   color: var(--muted);
   cursor: pointer;
+}
+/* An open card: details and labelled actions, below the swipeable face. */
+.task[data-open] .task-face {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.task-more {
+  /* Above the swipe hint, which sits behind the whole card. */
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 10px 14px 14px 52px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+}
+.task-more .task-link {
+  justify-self: start;
+}
+.task-plants {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.month-block {
+  display: grid;
+  gap: 14px;
+}
+.month-header {
+  margin: 8px 0 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+  font: 600 1.3rem/1.2 var(--display);
+}
+.buy-plants {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.buy-plants li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.buy-plants .task-check {
+  margin: 4px 0;
+}
+.buy-plants li[data-state='done'] .task-check,
+.buy-card[data-state='done'] .task-face .task-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.buy-plants li[data-state='done'] .buy-plant {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--line);
 }
 .text-button.inline {
   min-height: 0;
