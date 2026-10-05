@@ -189,3 +189,11 @@ export function groupStatus(g: PlantGroup): Status | 'mixed' {
   const present = STATUSES.filter((s) => g.counts[s] > 0)
   return present.length === 1 ? present[0] : 'mixed'
 }
+
+// A list item's status in words, for a plant row: "To buy for fall 2026",
+// "Bought, not planted yet".
+export function statusLine(status: Status, season: string) {
+  if (status === 'to buy') return `To buy for ${seasonLabel(season).toLowerCase()}`
+  if (status === 'bought') return 'Bought, not planted yet'
+  return status === 'planted' ? 'Planted' : 'Skipped'
+}

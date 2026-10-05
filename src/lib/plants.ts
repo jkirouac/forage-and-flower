@@ -134,7 +134,7 @@ const POLLINATORS: [RegExp, Trait][] = [
   [/specialist|oligolege/, { key: 'specialist', label: 'Specialist bees' }],
   [/butterfl/, { key: 'butterfly', label: 'Butterflies' }],
   [/hummingbird/, { key: 'hummingbird', label: 'Hummingbirds' }],
-  [/larval host|caterpillar|(^|[^a-z])lep([^a-z]|$)/, { key: 'caterpillar', label: 'Feeds caterpillars' }],
+  [/larval host|caterpillar|(^|[^a-z])lep([^a-z]|$)/, { key: 'caterpillar', label: 'Caterpillars' }],
   [/moth/, { key: 'moth', label: 'Moths' }],
   [/hoverfl/, { key: 'hoverfly', label: 'Hoverflies' }],
   [/goldfinch|(^|[^g])birds?([^a-z]|$)|seed source/, { key: 'bird', label: 'Birds' }],
@@ -146,7 +146,7 @@ const TRAITS: [RegExp, Trait][] = [
   [/edible|(^|[^a-z])tea([^a-z]|$)|berries|fruit|culinary|herbal/, { key: 'edible', label: 'Edible' }],
   [/self-?seed|self-?sow/, { key: 'seeds', label: 'Self-seeds' }],
   [/nitrogen/, { key: 'nitrogen', label: 'Fixes nitrogen' }],
-  [/shade/, { key: 'shade', label: 'Takes part shade' }],
+  [/shade/, { key: 'shade', label: 'Part shade' }],
   [/wet[- ]feet|moisture[- ]loving|moist soil/, { key: 'wet', label: 'Likes wet soil' }],
   [/cavity|pithy|hollow/, { key: 'nest', label: 'Nesting stems for bees' }],
   [/seedhead/, { key: 'seedheads', label: 'Winter seedheads' }],
@@ -159,7 +159,9 @@ const FRUIT = /cherr|(^|[^a-z])figs?([^a-z]|$)|loquat|plum|apple|pear|huckleberr
 // Plants filters. Who it feeds comes from the notes' Pollinators column (or the
 // "why" when there's none). Edible: an edible kind, "edible" (or tea, berries…) in
 // the why, or a fruit by name.
-export function plantTraits(plant: Pick<FullPlant, 'pollinators' | 'why' | 'native'> & Partial<Pick<FullPlant, 'kind' | 'common'>>) {
+export function plantTraits(
+  plant: Pick<FullPlant, 'pollinators' | 'why' | 'native'> & Partial<Pick<FullPlant, 'kind' | 'common' | 'tags'>>,
+) {
   const who = (plant.pollinators ?? plant.why ?? '').toLowerCase()
   const what = (plant.why ?? '').toLowerCase()
   const pollinators = POLLINATORS.filter(([re]) => re.test(who)).map(([, t]) => t)
@@ -169,6 +171,11 @@ export function plantTraits(plant: Pick<FullPlant, 'pollinators' | 'why' | 'nati
   ]
   const edible = plant.kind === 'edible' || FRUIT.test((plant.common ?? '').toLowerCase())
   if (edible && !traits.some((t) => t.key === 'edible')) traits.push({ key: 'edible', label: 'Edible' })
+  // Sun from the notes' Sun column (imported as tags): full-sun, part-shade, shade.
+  const tags = plant.tags ?? []
+  if (tags.includes('full-sun')) traits.unshift({ key: 'sun', label: 'Full sun' })
+  if ((tags.includes('part-shade') || tags.includes('shade')) && !traits.some((t) => t.key === 'shade'))
+    traits.push({ key: 'shade', label: 'Part shade' })
   return { pollinators, traits }
 }
 
@@ -296,6 +303,7 @@ export const FILTERS: PlantFilter[] = [
   { key: 'hummingbirds', label: 'Hummingbirds', icon: 'hummingbird', row: 'feeds', traits: ['hummingbird'], phrase: 'hummingbirds' },
   { key: 'caterpillars', label: 'Caterpillars', icon: 'caterpillar', row: 'feeds', traits: ['caterpillar'], phrase: 'caterpillars' },
   { key: 'humans', label: 'Humans', icon: 'edible', row: 'feeds', traits: ['edible'], phrase: 'us' },
+  { key: 'sun', label: 'Full sun', icon: 'sun', row: 'traits', traits: ['sun'], phrase: 'like full sun' },
   { key: 'drought', label: 'Drought-tolerant', icon: 'drought', row: 'traits', traits: ['drought'], phrase: 'are drought-tolerant' },
   { key: 'nest', label: 'Nesting stems', icon: 'nest', row: 'traits', traits: ['nest'], phrase: 'have nesting stems for bees' },
   { key: 'native', label: 'BC native', icon: 'native', row: 'traits', traits: ['native'], phrase: 'are BC natives' },
@@ -331,6 +339,23 @@ export function describeFilters(count: number, selected: string[]) {
   const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`)
   const parts = [feeds.length ? `feed ${list(feeds)}` : '', list(traits)].filter(Boolean)
   const what = count === 1 ? '1 plant' : `${count} plants`
-  const verb = (x: string) => (count === 1 ? x.replace(/^feed /, 'feeds ').replace(/^are /, 'is ').replace(/^have /, 'has ').replace(/^take /, 'takes ') : x)
+  const verb = (x: string) => (count === 1 ? x.replace(/^feed /, 'feeds ').replace(/^are /, 'is ').replace(/^have /, 'has ').replace(/^take /, 'takes ').replace(/^like /, 'likes ') : x)
   return `${what} ${parts.map(verb).join(' and ')}.`
+}
+
+// The notes are written in a naturalist's shorthand. Shown on a plant page, a few
+// terms read better in plain words; the notes themselves stay as written.
+const PLAIN: [RegExp, string][] = [
+  [/\bLamiaceae\b/g, 'mint-family'],
+  [/\bBombus\b/g, 'bumblebee'],
+  [/\bLepidoptera\b/g, 'butterfly and moth'],
+  [/\bLep\b/g, 'butterfly and moth'],
+  [/\boligoleges?\b/g, 'specialist bee'],
+  [/\bCOSEWIC Threatened\b/g, 'threatened in Canada'],
+  [/\bCOSEWIC Endangered\b/g, 'endangered in Canada'],
+  [/\bCOSEWIC Special Concern\b/g, 'a species of concern in Canada'],
+  [/\s\+\s/g, ' and '],
+]
+export function plain(text: string | null) {
+  return PLAIN.reduce((s, [re, to]) => s.replace(re, to), text ?? '')
 }

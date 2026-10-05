@@ -11,6 +11,7 @@ import {
   rulesFor,
   summarizeRules,
   taskForPlanting,
+  plain,
   whyBullets,
   type Action,
   type FullPlant,
@@ -78,9 +79,9 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
       <>
         <header className="page-head">
           {back}
-          <h1>Plant not found</h1>
+          <h1>We can't find this plant</h1>
         </header>
-        <p className="empty">It may have been removed from the catalogue.</p>
+        <p className="empty">It may have come off our lists.</p>
       </>
     )
   }
@@ -99,7 +100,7 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
     const putIn = entry.action === 'planted' || entry.action === 'sown'
     if (item && putIn && item.status !== 'planted') {
       seasons.update(item.id, { status: 'planted' })
-      notes.push(`marked planted on ${seasonLabel(item.season)}`)
+      notes.push(`marked it planted on the ${seasonLabel(item.season).toLowerCase()} list`)
     }
     // Tick this month's task for it, if the planting was this month.
     const [y, m] = entry.happened_on.split('-').map(Number)
@@ -109,10 +110,10 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
       const task = taskForPlanting(open, plant)
       if (task) {
         garden.tick(task.id, year, month, 'done')
-        notes.push(`ticked “${task.title}”`)
+        notes.push(`ticked “${task.title}” off this month`)
       }
     }
-    setSaved(`Saved${notes.length ? `, and ${notes.join(' and ')}` : ''}.`)
+    setSaved(`Saved.${notes.length ? ` Also ${notes.join(' and ')}.` : ''}`)
     setRecording(false)
   }
 
@@ -170,7 +171,7 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
           )}
           {plant.why && (
             <ul className="why-list">
-              {whyBullets(plant.why).map((b) => (
+              {whyBullets(plain(plant.why)).map((b) => (
                 <li key={b}>{b}</li>
               ))}
             </ul>
@@ -195,7 +196,7 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
             </p>
           </>
         ) : (
-          <p className="empty">No planting or flowering months for this plant yet.</p>
+          <p className="empty">We don't have its planting or flowering months yet.</p>
         )}
       </section>
 
@@ -204,7 +205,7 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
       <section className="block">
         <h2 className="label">Shopping and planting</h2>
         {items.length === 0 ? (
-          <p className="empty">Not on a shopping list. Add it from Shopping.</p>
+          <p className="empty">Not on a shopping list yet. You can add it in Shopping.</p>
         ) : (
           <ul className="list-lines">
             {listGroups(items).map((g) => (
@@ -377,7 +378,7 @@ function RulesSummary({ rules, siteNumber }: { rules: Rule[]; siteNumber: (id: s
         )}
       </div>
       <button type="button" className="text-button" aria-expanded={open} onClick={() => setOpen(!open)}>
-        {open ? 'Hide the reasons' : 'Why? See the full rules'}
+        {open ? 'Hide' : 'See why'}
       </button>
       {open && (
         <ul className="rules-box">
@@ -418,7 +419,7 @@ function PlantingLog({
     <section className="block">
       <h2 className="label">Planting log</h2>
       {log.length === 0 ? (
-        <p className="empty">Nothing recorded yet.</p>
+        <p className="empty">Nothing planted yet.</p>
       ) : (
         <>
           {kinds.length > 1 && (
@@ -518,7 +519,7 @@ function RecordForm({
         )
       }}
     >
-      <h2 className="label">Record for {plant.common}</h2>
+      <h2 className="label">What happened to the {plant.common}?</h2>
       <div className="choices" role="radiogroup" aria-label="What happened">
         {ACTIONS.map((a) => (
           <button key={a} type="button" role="radio" aria-checked={action === a} className="choice small" onClick={() => setAction(a)}>
@@ -540,7 +541,7 @@ function RecordForm({
               }
             }}
           >
-            <option value="">Not from a list</option>
+            <option value="">Not from a shopping list</option>
             {open.map((i) => (
               <option key={i.id} value={i.id}>
                 {seasonLabel(i.season)} · × {qtyLabel(i.qty_min, i.qty_max)}

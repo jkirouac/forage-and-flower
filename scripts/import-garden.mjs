@@ -614,10 +614,12 @@ for (const t of decisions.extra_tasks ?? []) {
 const fromEmail = new Set((decisions.extra_tasks ?? []).map((t) => t.from_email).filter(Boolean))
 
 // Cross-check: every reminder-email item should have a schedule task in the same month.
-// The reminder job's task file is optional: REMINDER_TASKS_JSON in .env.local.
+// The reminder job's task file is optional: REMINDER_TASKS_JSON in .env.local. It was
+// retired in October 2026 (the app builds the email now), so a missing file is fine.
 const remindersPath = process.env.REMINDER_TASKS_JSON
-const json = remindersPath ? JSON.parse(fs.readFileSync(path.resolve(remindersPath), 'utf8')) : {}
-if (!remindersPath) note('skipped', 'No REMINDER_TASKS_JSON set, so the reminder email was not cross-checked.')
+const remindersFound = remindersPath && fs.existsSync(path.resolve(remindersPath))
+const json = remindersFound ? JSON.parse(fs.readFileSync(path.resolve(remindersPath), 'utf8')) : {}
+if (!remindersFound) note('skipped', 'No reminder task file, so the reminder email was not cross-checked.')
 const words = (s) => s.toLowerCase().replace(/https?:\S+/g, '').match(/[a-z]{4,}/g) ?? []
 for (const [m, entry] of Object.entries(json)) {
   const monthText = tasks.filter((t) => t.month === Number(m)).map((t) => t.title.toLowerCase()).join(' ') + ' worm wigwam crank'
@@ -658,15 +660,16 @@ report.inferred = report.inferred.filter((n) => !acceptRes.some((re) => re.test(
 // ---------- plant pages: size, pollinators, photo (added 2026-10-06) ----------
 
 // Size and Pollinators from the ranked lists, matched like rank and "why" above.
-const DETAIL_FILES = ['plants/perennial-flowers.md', 'plants/trees-shrubs.md', 'plants/perennial-herbs.md', 'plants/ferns-foliage.md']
+const DETAIL_FILES = ['plants/perennial-flowers.md', 'plants/trees-shrubs.md', 'plants/perennial-herbs.md', 'plants/ferns-foliage.md', 'plants/perennial-vegetables.md']
 const detailRows = DETAIL_FILES.flatMap((file) =>
   tables(read(file))
-    .filter((t) => t.headers.includes('rank') && (t.headers.includes('size (h×w)') || t.headers.includes('pollinators')))
+    .filter((t) => t.headers.includes('rank') && ['size (h×w)', 'pollinators', 'sun'].some((h) => t.headers.includes(h)))
     .flatMap((t) =>
       t.rows.map((r) => ({
         name: plain([r.plant, r.variety].filter(Boolean).join(' ')).text.replace('★', '').trim(),
         size: plain(r['size (h×w)'] ?? '').text,
         pollinators: plain(r.pollinators ?? '').text,
+        sun: plain(r.sun ?? '').text,
         image: r.image ?? '',
       })),
     ),
@@ -746,10 +749,28 @@ async function findPhoto(p, detail) {
 }
 
 const photoReport = { notes: [], latin: [], common: [], genus: [], missing: [] }
+const sunReport = { missing: [], check: [] }
 for (const p of plants.values()) {
   const detail = findDetail(p)
   p.size = detail?.size || null
   p.pollinators = detail?.pollinators || null
+  // Sun, from the notes' Sun column, as tags the app reads: "Sun or part shade" is both.
+  // A looser match than size and pollinators, since a sibling cultivar's sun needs
+  // carry over: hyphens as spaces, no cultivar name, either name inside the other.
+  const loose = (n) => flat(n).split(/\s*['(]/)[0].replace(/\s+/g, ' ').trim()
+  const sunRow =
+    (detail?.sun && detail) ||
+    detailRows.find((x) => {
+      if (!x.sun) return false
+      const a = loose(x.name)
+      const b = loose(p.common)
+      return a.length > 4 && b.length > 4 && (a.includes(b) || b.includes(a))
+    })
+  const sun = (sunRow?.sun ?? '').toLowerCase()
+  const sunTags = sun.startsWith('full sun') ? ['full-sun'] : sun.startsWith('sun or part shade') ? ['full-sun', 'part-shade'] : sun.startsWith('part shade') ? ['part-shade'] : sun.startsWith('shade') ? ['shade'] : []
+  for (const t of sunTags) if (!p.tags.includes(t)) p.tags.push(t)
+  if (!sunTags.length) sunReport.missing.push(p.common)
+  else if (sun.includes('(check)')) sunReport.check.push(`${p.common}: ${sunRow.sun}`)
   if (!(p.key in photoCache)) photoCache[p.key] = await findPhoto(p, detail)
   const photo = photoCache[p.key]
   p.photo = photo ? { url: photo.url, page: photo.page, credit: photo.credit } : null
@@ -795,7 +816,9 @@ fs.writeFileSync(
     section('Inferred', report.inferred, 'The script filled these in. Check they are right.'),
     section('Reminder email vs schedule', report.mismatch, 'In the reminder email but not in schedule.md. Add these to the app, or drop them?'),
     section('Skipped', report.skipped, 'Left out on purpose.'),
-    `## Plant pages\n\nSize or pollinators found for ${detailCount} of ${plants.size} plants.\n`,
+    `## Plant pages\n\nSize or pollinators found for ${detailCount} of ${plants.size} plants. Sun found for ${plants.size - sunReport.missing.length}.\n`,
+    section('Sun to confirm', sunReport.check, 'Marked (check) in the notes. Confirm or correct them there, then remove (check).'),
+    section('No Sun value', sunReport.missing, 'Not in any ranked table with a Sun column. Add a row, or leave it without a Full sun / Part shade chip.'),
     section('Photos missing', photoReport.missing, 'No photo found in the notes or on Wikipedia. These show a drawn icon instead.'),
     section('Photos from the genus only', photoReport.genus, 'Wikipedia had no page for the species, so the photo shows a relative. Check these look right.'),
     section('Photos by common name', photoReport.common, 'Found by the common name. Check these are the right plant.'),

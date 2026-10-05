@@ -13,6 +13,7 @@ import {
   describeFilters,
   linkPlantNames,
   matchesFilters,
+  plain,
   plantTraits,
   plantsByPlace,
   summarizeRules,
@@ -132,6 +133,7 @@ test('at a glance: who it feeds from the Pollinators column, what it is like fro
     native: true,
   })
   assert.deepEqual(t.pollinators.map((x) => x.key), ['bumblebee', 'bee', 'specialist', 'butterfly', 'caterpillar'])
+  assert.equal(t.pollinators.find((x) => x.key === 'caterpillar')?.label, 'Caterpillars')
   assert.deepEqual(t.traits.map((x) => x.key), ['native', 'drought', 'edible', 'seedheads'])
   assert.deepEqual(
     plantTraits({ pollinators: 'hummingbirds, bees', why: null, native: false }).pollinators.map((x) => x.key),
@@ -238,4 +240,21 @@ test('the summary line reads like a sentence', () => {
   assert.equal(describeFilters(12, ['bees', 'drought']), '12 plants feed bees and are drought-tolerant.')
   assert.equal(describeFilters(1, ['bees', 'butterflies', 'nest']), '1 plant feeds bees and butterflies and has nesting stems for bees.')
   assert.equal(describeFilters(3, ['humans']), '3 plants feed us.')
+})
+
+test('Full sun and part shade from the notes\' Sun column (tags)', () => {
+  const keys = (tags: string[]) => plantTraits(plant('x', { tags })).traits.map((t) => t.key)
+  assert.deepEqual(keys(['full-sun']), ['sun'])
+  assert.deepEqual(keys(['full-sun', 'part-shade']), ['sun', 'shade'])
+  assert.deepEqual(keys(['shade']), ['shade'])
+  assert.ok(matchesFilters(plant('x', { tags: ['full-sun'] }), ['sun']))
+  assert.equal(describeFilters(4, ['bees', 'sun']), '4 plants feed bees and like full sun.')
+})
+
+test('the notes in plain words', () => {
+  assert.equal(
+    plain('Pithy Lamiaceae stems; Apr–May feeds emerging Bombus queens + early hummingbirds; Lep larval host'),
+    'Pithy mint-family stems; Apr–May feeds emerging bumblebee queens and early hummingbirds; butterfly and moth larval host',
+  )
+  assert.equal(plain('Western Bumblebee (COSEWIC Threatened)'), 'Western Bumblebee (threatened in Canada)')
 })

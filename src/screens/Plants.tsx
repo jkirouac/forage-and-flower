@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useCatalogue } from '../lib/catalogue'
 import { useSeasons } from '../lib/seasons'
-import { seasonLabel, type PlanItem } from '../lib/plan'
+import { statusLine, type PlanItem } from '../lib/plan'
 import {
   availableFilters,
   describeFilters,
@@ -67,7 +67,7 @@ export default function Plants({ userId }: { userId: string }) {
   return (
     <>
       <header className="page-head">
-        <p className="kicker">Our plants</p>
+        <p className="kicker">{all.length ? `${all.length} plants` : 'Our plants'}</p>
         <h1>Plants</h1>
       </header>
       <hr className="rule" />
@@ -89,7 +89,7 @@ export default function Plants({ userId }: { userId: string }) {
         <>
           <label className="field">
             Find a plant
-            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Common or Latin name" />
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name" />
           </label>
 
           {(['feeds', 'traits'] as const).map((row) => {
@@ -126,7 +126,7 @@ export default function Plants({ userId }: { userId: string }) {
 
           {filtering && total === 0 ? (
             <p className="empty">
-              No plants match. Try fewer filters{q.trim() ? ' or a different name' : ''}.{' '}
+              Nothing matches all of those. Try turning a filter off{q.trim() ? ' or searching another name' : ''}.{' '}
               <button
                 type="button"
                 className="text-button inline"
@@ -142,23 +142,23 @@ export default function Plants({ userId }: { userId: string }) {
             <>
               <PlantList
                 title="In the ground"
-                about="Planted: marked planted on a shopping list, or recorded in a plant's planting log."
+                about="Planted in our garden."
                 plants={inGround}
                 items={items}
                 plantings={data.plantings}
-                empty={filtering ? '' : 'Nothing recorded as planted yet. Mark plants planted in Shopping, or record a planting on a plant page.'}
+                empty={filtering ? '' : 'Nothing planted yet. Mark a plant planted in Shopping and it shows up here.'}
               />
               <PlantList
                 title="On our shopping lists"
-                about="To buy or bought, and not planted yet."
+                about="Still to buy, or bought and waiting to go in."
                 plants={onLists}
                 items={items}
                 plantings={data.plantings}
-                empty={filtering ? '' : 'Nothing waiting to be bought or planted.'}
+                empty={filtering ? '' : 'Nothing on the shopping lists right now.'}
               />
               <PlantList
                 title="More plants"
-                about="The rest of the catalogue, from our ranked plant lists."
+                about="Ideas from our plant lists, not planned yet."
                 plants={others}
                 items={items}
                 plantings={data.plantings}
@@ -223,7 +223,7 @@ function PlantList({
   )
 }
 
-// "Perennial flower · BC native · Fall 2026: to buy" or "… · Planted 5 Oct".
+// "Perennial flower · BC native · To buy for fall 2026" or "… · Planted Oct 5".
 function plantLine(p: FullPlant, items: PlanItem[], plantings: Planting[]) {
   const parts = [p.kind[0].toUpperCase() + p.kind.slice(1)]
   if (p.native) parts.push('BC native')
@@ -231,6 +231,6 @@ function plantLine(p: FullPlant, items: PlanItem[], plantings: Planting[]) {
   const last = plantings.filter((x) => x.plant_id === p.id).sort((a, b) => b.happened_on.localeCompare(a.happened_on))[0]
   const open = items.filter((i) => i.plant_id === p.id && i.status !== 'planted' && i.status !== 'skipped')
   if (last) parts.push(`${last.action[0].toUpperCase() + last.action.slice(1)} ${shortDate(last.happened_on)}`)
-  else if (open.length) parts.push(`${seasonLabel(open[0].season)}: ${open[0].status}`)
+  else if (open.length) parts.push(statusLine(open[0].status, open[0].season))
   return parts.join(' · ')
 }

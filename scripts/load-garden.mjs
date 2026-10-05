@@ -61,7 +61,7 @@ end $$;`)
 
 // A plant already there keeps everything the app may have changed; only the plant-page
 // details from the notes (size, pollinators, photo) are refreshed, and flowering
-// months are filled in where a plant has none.
+// months are filled in where a plant has none, and new tags (sun) are added.
 sql.push(`-- Catalogue: plants
 insert into garden.plants (key, common, latin, kind, native, tags, plant_months, bloom_months, pollinator_months, threat_tier, threat_reason, rank, why, size, pollinators, photo_url, photo_page, photo_credit) values
 ${rows(data.plants, (p) => [
@@ -72,6 +72,7 @@ ${rows(data.plants, (p) => [
 ])}
 on conflict (key) do update set
   bloom_months = case when cardinality(garden.plants.bloom_months) = 0 then excluded.bloom_months else garden.plants.bloom_months end,
+  tags = array(select distinct t from unnest(garden.plants.tags || excluded.tags) as t order by t),
   size = excluded.size,
   pollinators = excluded.pollinators,
   photo_url = excluded.photo_url,

@@ -14,6 +14,7 @@ import {
   buyingSeason,
   groupByPlant,
   groupStatus,
+  statusLine,
   type PlanItem,
 } from '../src/lib/plan.ts'
 import { addOp, type Op } from '../src/lib/ops.ts'
@@ -166,4 +167,9 @@ test('one group per plant, sites inside, quantities summed', () => {
   assert.equal(groups[0].qtyMax, 5)
   assert.equal(groupStatus(groups[0]), 'mixed')
   assert.equal(groupStatus(groups[1]), 'bought')
+})
+
+test('status in words for a plant row', () => {
+  assert.equal(statusLine('to buy', 'fall-2026'), 'To buy for fall 2026')
+  assert.equal(statusLine('bought', 'fall-2026'), 'Bought, not planted yet')
 })
