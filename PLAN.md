@@ -2,7 +2,7 @@
 
 The plan for building **Forage & Flower**, the shared garden app for a two-person household. How it looks is in `DESIGN.md`. The garden content it starts from is the household's markdown garden notes, kept outside this repo.
 
-October 2026. Steps 1 to 6 of the build order are done.
+October 2026. All seven steps of the build order are done.
 
 ## Purpose
 
@@ -52,7 +52,7 @@ A small installable web app with its data in a shared Supabase project.
 | Migrations | Managed outside this repo, with the shared project's other migrations. This repo never pushes to the shared project. |
 | Sign-in | Email and password, using the shared project's login (decided 2026-10-03). |
 | Fonts | Newsreader and Public Sans, bundled with the app. |
-| Monthly email | Keeps the existing scheduled GitHub job and Gmail sending. A small function inside the Supabase project builds the email from the app's data; the job fetches it with a token that can do nothing else (decided 2026-10-03). The project's master key never leaves Supabase. |
+| Monthly email | Keeps the existing scheduled GitHub job and Gmail sending. A small function inside the Supabase project builds the email from the app's data; the job fetches it with a token that can do nothing else (decided 2026-10-03, built 2026-10-07). The project's master key never leaves Supabase. |
 
 **Timing:** the `garden` schema goes in after another app's move into the shared project finishes, so two changes don't overlap.
 
@@ -101,10 +101,10 @@ Each step ends with something you can use.
 4. **Seasons** (the tab is now called Shopping, with one card per plant). Fall and spring lists grouped by nursery. Edit any item in place: quantity, site, nursery, status (to buy, bought, planted, skipped). Add a plant to a season, or remove one. This is where the lists get corrected, since spring 2026 purchases weren't reviewed before the import. **Done.**
 5. **Plant pages.** The 12-month bar, the rules box, where to buy, and the planting log. Recording a planting from here also ticks the matching task. **Done.**
 6. **Pollinator picks.** The ranked list with reasons, and the year ring with a plain list beneath it. **Done.**
-7. **Monthly email.** The function that builds the email, its token, and a change to the reminder job to fetch from it instead of its task file. Then retire the task file.
+7. **Monthly email.** The function that builds the email, its token, and a change to the reminder job to fetch from it instead of its task file. Then retire the task file. **Done.**
 
 **Checks at every step:** a phone-size walkthrough with screenshots, the privacy check, and once colours are set, a contrast check.
 
 ## Questions to settle during the build
 
-1. **Where the email function is deployed from.** Alongside the shared project's migrations, or from this repo.
+1. **Where the email function is deployed from.** Decided 2026-10-07: from this repo (`supabase/functions/garden-email`), so it shares the app's month and shopping code. Only the function is deployed from here; the shared project's migrations and settings stay elsewhere.
