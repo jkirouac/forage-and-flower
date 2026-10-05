@@ -3,6 +3,7 @@
 // hears audio; it gets this text (garden-note function).
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { mergeResults } from './transcript'
 
 // The Web Speech API isn't in TypeScript's DOM types yet; this is the part used.
 interface Result {
@@ -62,13 +63,9 @@ export function useDictation() {
     const current = () => rec.current === r
     r.onresult = (e) => {
       if (!current()) return
-      settled = ''
-      forming = ''
-      for (let i = 0; i < e.results.length; i++) {
-        const res = e.results[i]
-        if (res.isFinal) settled += res[0].transcript
-        else forming += res[0].transcript
-      }
+      // Android repeats the whole sentence in every result; mergeResults copes.
+      const pieces = Array.from(e.results, (res) => ({ transcript: res[0].transcript, isFinal: res.isFinal }))
+      ;({ settled, forming } = mergeResults(pieces))
       setFinalText(join(kept.current, settled))
       setInterimText(forming)
     }

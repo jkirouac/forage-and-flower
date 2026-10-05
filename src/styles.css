@@ -1178,8 +1178,9 @@ h1 {
   align-items: center;
   gap: 10px;
 }
-/* Save stays in reach however many items there are to check. */
-.drafts ~ .sheet-actions {
+/* Save (and Done while listening) stays in reach however long the sheet gets. */
+.drafts ~ .sheet-actions,
+.sheet-actions[data-pinned] {
   position: sticky;
   bottom: calc(-20px - env(safe-area-inset-bottom, 0px));
   margin: 0 -16px calc(-20px - env(safe-area-inset-bottom, 0px));
@@ -1196,6 +1197,11 @@ h1 {
   font: 400 1.55rem/1.35 var(--display);
   color: var(--ink);
   overflow-wrap: anywhere;
+}
+/* While listening, a long note scrolls inside itself. */
+.dictation[data-live] {
+  max-height: 40dvh;
+  overflow-y: auto;
 }
 .dictation[data-dim] {
   font-size: 1.15rem;

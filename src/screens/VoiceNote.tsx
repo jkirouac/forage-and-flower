@@ -32,6 +32,7 @@ export default function VoiceNote({
   const [items, setItems] = useState<DraftItem[]>([])
   const [failure, setFailure] = useState('')
   const sheet = useRef<HTMLDivElement>(null)
+  const live = useRef<HTMLParagraphElement>(null)
   const { supported, start, cancel } = dictation
 
   // Listening starts as the sheet opens; the tap on the mic was the go-ahead.
@@ -53,6 +54,15 @@ export default function VoiceNote({
   useEffect(() => {
     if (dictation.error && stage === 'listening') setStage('typing')
   }, [dictation.error, stage])
+
+  // Keep the newest words in view, and stop at the most a note can hold.
+  const heard = dictation.finalText.length + dictation.interimText.length
+  useEffect(() => {
+    if (stage !== 'listening') return
+    live.current?.scrollTo(0, live.current.scrollHeight)
+    if (heard >= MAX_SPOKEN) dictation.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heard, stage])
 
   useEffect(() => {
     sheet.current?.focus()
@@ -102,7 +112,7 @@ export default function VoiceNote({
 
         {stage === 'listening' && (
           <>
-            <p className="dictation" aria-live="polite">
+            <p className="dictation" data-live aria-live="polite" ref={live}>
               {dictation.finalText || dictation.interimText ? (
                 <>
                   {dictation.finalText}{' '}
@@ -112,7 +122,7 @@ export default function VoiceNote({
                 <span className="dictation-forming">Listening…</span>
               )}
             </p>
-            <div className="sheet-actions">
+            <div className="sheet-actions" data-pinned>
               <button type="button" className="listen-stop" onClick={dictation.stop}>
                 <span className="listen-ring" aria-hidden="true" />
                 Done
