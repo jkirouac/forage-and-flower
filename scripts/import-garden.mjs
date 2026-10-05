@@ -432,10 +432,20 @@ for (const [tier, re, latin, common, reason] of THREAT) {
   note('inferred', `Added ${common} to the plant list for Pollinator picks (threat tier ${tier}). It isn't on the fall 2026 or spring 2027 list${onSpring2026 ? '; it is on spring 2026, so check the purchase review' : ''}.`)
 }
 // Bloom Calendar: one row per month, naming what flowers.
-const calendar = tables(read('plants/perennial-flowers.md'))
-  .find((t) => t.headers.includes('month'))
-  .rows.map((r) => ({ month: MONTHS.indexOf(plain(r.month).text.toLowerCase()) + 1, text: plain(r["what's blooming"] ?? '').text.toLowerCase() }))
-  .filter((r) => r.month > 0)
+// The perennials', herbs' and trees-and-shrubs' calendars together (the last two
+// added 2026-10-07). A row can cover two months ("Jul–Aug"). Hyphens read as spaces,
+// so "Red Flowering Currant" matches "Red-flowering Currant".
+const flat = (s) => s.toLowerCase().replace(/-/g, ' ')
+const calendar = ['plants/perennial-flowers.md', 'plants/perennial-herbs.md', 'plants/trees-shrubs.md'].flatMap((file) =>
+  (tables(read(file)).find((t) => t.headers.includes('month'))?.rows ?? []).flatMap((r) => {
+    const text = flat(plain(r["what's blooming"] ?? '').text)
+    const [from, to] = plain(r.month).text.toLowerCase().split(/[–-]/).map((m) => MONTHS.indexOf(m.trim().slice(0, 3)) + 1)
+    if (!from) return []
+    const months = [from]
+    for (let m = from; to && m !== to; ) months.push((m = (m % 12) + 1))
+    return months.map((month) => ({ month, text }))
+  }),
+)
 
 // Rank, sites and "why" from the Stack Ranking table, matched by name.
 const ranking = tables(read('plants/perennial-flowers.md')).find((t) => t.headers.includes('rank'))
@@ -464,10 +474,13 @@ for (const p of plants.values()) {
     p.why = r.why
     p.bloom_months = monthRange(r.why)
   }
-  // Fall back to the Bloom Calendar at the top of the file.
+  // Fall back to the Bloom Calendar at the top of the file. It names cultivars by
+  // their plant ("Agastache" for Agastache 'Little Adder'), so try the name before
+  // any quote or bracket too.
   if (p.bloom_months.length === 0) {
-    const names = [p.common.toLowerCase(), p.latin?.toLowerCase()].filter(Boolean)
-    p.bloom_months = calendar.filter((c) => names.some((n) => c.text.includes(n))).map((c) => c.month)
+    const before = p.common.split(/\s*['(]/)[0].toLowerCase()
+    const names = [p.common, p.latin, before].filter((n) => n && n.length > 3).map(flat)
+    p.bloom_months = [...new Set(calendar.filter((c) => names.some((n) => c.text.includes(n))).map((c) => c.month))].sort((a, b) => a - b)
   }
 }
 // The rest of the Stack Ranking, so Pollinator picks runs 1 to 48 (added 2026-10-06).
@@ -509,7 +522,7 @@ for (const row of ranking.rows) {
   // "Tall Yarrow"): a range in "why" is sometimes seedheads or winter form. Then the
   // range in "why", then the genus in the calendar ("Penstemon").
   const inCalendar = (names) =>
-    calendar.filter((c) => names.some((n) => n && n.length > 3 && c.text.includes(n))).map((c) => c.month)
+    [...new Set(calendar.filter((c) => names.some((n) => n && n.length > 3 && c.text.includes(flat(n)))).map((c) => c.month))].sort((a, b) => a - b)
   const before = p.common.split(/\s*['(]/)[0].toLowerCase()
   p.bloom_months = inCalendar([p.common.toLowerCase(), p.latin?.toLowerCase(), before])
   if (p.bloom_months.length === 0) p.bloom_months = monthRange(why)
