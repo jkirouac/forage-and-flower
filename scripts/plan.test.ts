@@ -12,6 +12,8 @@ import {
   seasonLabel,
   seasonOptions,
   buyingSeason,
+  groupByPlant,
+  groupStatus,
   type PlanItem,
 } from '../src/lib/plan.ts'
 import { addOp, type Op } from '../src/lib/ops.ts'
@@ -141,4 +143,27 @@ test('the list being shopped for each month', () => {
   assert.equal(buyingSeason(2027, 3), 'spring-2027')
   assert.equal(buyingSeason(2027, 7), null)
   assert.equal(buyingSeason(2026, 12), null)
+})
+
+test('one group per plant, sites inside, quantities summed', () => {
+  const plants = [
+    { id: 'camas', key: 'c', common: 'Great Camas', latin: null, kind: 'bulb' },
+    { id: 'fern', key: 'f', common: 'Korean Rock Fern', latin: null, kind: 'fern' },
+  ]
+  const site = (id: string | null) => (id ? Number(id.slice(1)) : undefined)
+  const groups = groupByPlant(
+    [
+      item('a', { plant_id: 'camas', site_id: 's9', qty_min: 1, qty_max: 2 }),
+      item('b', { plant_id: 'camas', site_id: 's2', qty_min: 3, qty_max: 3, status: 'bought' }),
+      item('c', { plant_id: 'fern', site_id: 's3', status: 'bought' }),
+    ],
+    plants,
+    site,
+  )
+  assert.deepEqual(groups.map((g) => g.plant_id), ['camas', 'fern'])
+  assert.deepEqual(groups[0].items.map((i) => i.site_id), ['s2', 's9'])
+  assert.equal(groups[0].qtyMin, 4)
+  assert.equal(groups[0].qtyMax, 5)
+  assert.equal(groupStatus(groups[0]), 'mixed')
+  assert.equal(groupStatus(groups[1]), 'bought')
 })

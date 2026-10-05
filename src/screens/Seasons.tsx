@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useSeasons, type NewItem } from '../lib/seasons'
 import {
-  countByStatus,
   currentSeason,
   groupByNursery,
+  groupByPlant,
+  groupStatus,
   nextStatus,
   qtyLabel,
   seasonLabel,
@@ -12,6 +13,7 @@ import {
   type Nursery,
   type PlanItem,
   type Plant,
+  type PlantGroup,
   type Site,
   type Status,
 } from '../lib/plan'
@@ -21,24 +23,32 @@ import { ClearBar, ShowCleared } from './ClearBar'
 const STATUS_LABEL: Record<Status, string> = { 'to buy': 'To buy', bought: 'Bought', planted: 'Planted', skipped: 'Skipped' }
 const KINDS = ['perennial flower', 'tree or shrub', 'edible', 'bulb', 'fern', 'annual from seed', 'ornamental']
 
-// Seasons: the fall and spring lists, grouped by nursery so each group is a trip.
-// Tick plants off as you buy them, then "Clear N checked off" hides them (they stay
-// bought, ready to mark planted). Tap a plant to change how many, where, or from
-// which nursery, or to take it off the list.
+// Shopping (the Seasons lists): fall and spring, grouped by nursery so each group is
+// a trip, one card per plant with its sites inside. Tick plants off as you buy them,
+// then "Clear N checked off" hides them (they stay bought, ready to mark planted).
+// Tap a plant to change how many, where, or from which nursery, or to remove it.
 export default function Seasons({ userId }: { userId: string }) {
   const { data, error, pending, reload, update, remove, add, addPlant, clear } = useSeasons(userId)
   const [showCleared, setShowCleared] = useState(false)
   const [season, setSeason] = useState(() => currentSeason())
   const [onlyToBuy, setOnlyToBuy] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
+  const [openGroup, setOpenGroup] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
 
   const items = data?.items.filter((i) => i.season === season) ?? []
   const shown = items.filter((i) => (!onlyToBuy || i.status === 'to buy') && (showCleared || !i.cleared_at))
   const clearable = items.filter((i) => i.status !== 'to buy' && !i.cleared_at)
   const clearedCount = items.filter((i) => i.cleared_at).length
-  const counts = countByStatus(items)
+  // Counted by plant, like the cards: Great Camas for five sites is one to buy.
+  const counts: Record<Status, number> = { 'to buy': 0, bought: 0, planted: 0, skipped: 0 }
+  for (const g of data ? groupByNursery(items, data.nurseries, data.plants) : [])
+    for (const pg of groupByPlant(g.items, data?.plants ?? [])) {
+      const s = groupStatus(pg)
+      counts[s === 'mixed' ? (pg.counts['to buy'] > 0 ? 'to buy' : 'bought') : s]++
+    }
   const groups = data ? groupByNursery(shown, data.nurseries, data.plants) : []
+  const siteNumber = (id: string | null) => data?.sites.find((s) => s.id === id)?.number
   const summary = STATUSES.filter((s) => counts[s] > 0)
     .map((s) => `${counts[s]} ${s}`)
     .join(' · ')
@@ -46,8 +56,8 @@ export default function Seasons({ userId }: { userId: string }) {
   return (
     <>
       <header className="page-head">
-        <p className="kicker">Shopping and planting</p>
-        <h1>Seasons</h1>
+        <p className="kicker">To buy and to plant</p>
+        <h1>Shopping</h1>
       </header>
       <hr className="rule" />
 
@@ -108,24 +118,41 @@ export default function Seasons({ userId }: { userId: string }) {
                 {g.nursery && <p className="group-sub">{nurseryLine(g.nursery)}</p>}
               </div>
               <ul className="plan-list">
-                {g.items.map((item) => (
-                  <PlanRow
-                    key={item.id}
-                    item={item}
-                    plant={data.plants.find((p) => p.id === item.plant_id)}
-                    site={data.sites.find((s) => s.id === item.site_id)}
-                    sites={data.sites}
-                    nurseries={data.nurseries}
-                    open={open === item.id}
-                    onToggle={() => setOpen(open === item.id ? null : item.id)}
-                    onChange={(patch) => update(item.id, patch)}
-                    onRemove={() => {
-                      remove(item.id)
-                      setOpen(null)
-                    }}
-                    seasonName={seasonLabel(season)}
-                  />
-                ))}
+                {groupByPlant(g.items, data.plants, siteNumber).map((pg) => {
+                  const row = (item: PlanItem, asSite: boolean) => (
+                    <PlanRow
+                      key={item.id}
+                      item={item}
+                      plant={data.plants.find((p) => p.id === item.plant_id)}
+                      site={data.sites.find((s) => s.id === item.site_id)}
+                      sites={data.sites}
+                      nurseries={data.nurseries}
+                      asSite={asSite}
+                      open={open === item.id}
+                      onToggle={() => setOpen(open === item.id ? null : item.id)}
+                      onChange={(patch) => update(item.id, patch)}
+                      onRemove={() => {
+                        remove(item.id)
+                        setOpen(null)
+                      }}
+                      seasonName={seasonLabel(season)}
+                    />
+                  )
+                  if (pg.items.length === 1) return row(pg.items[0], false)
+                  const key = `${g.nursery?.id ?? 'none'}:${pg.plant_id}`
+                  return (
+                    <PlantGroupRow
+                      key={key}
+                      group={pg}
+                      plant={data.plants.find((p) => p.id === pg.plant_id)}
+                      open={openGroup === key}
+                      onToggle={() => setOpenGroup(openGroup === key ? null : key)}
+                      onStatus={(id, status) => update(id, { status })}
+                    >
+                      {pg.items.map((item) => row(item, true))}
+                    </PlantGroupRow>
+                  )
+                })}
               </ul>
             </section>
           ))}
@@ -179,6 +206,7 @@ function PlanRow({
   site,
   sites,
   nurseries,
+  asSite,
   open,
   onToggle,
   onChange,
@@ -190,6 +218,7 @@ function PlanRow({
   site: Site | undefined
   sites: Site[]
   nurseries: Nursery[]
+  asSite: boolean // a site row inside a plant's card: the site is the headline
   open: boolean
   onToggle: () => void
   onChange: (patch: Partial<PlanItem>) => void
@@ -198,9 +227,8 @@ function PlanRow({
 }) {
   const next = nextStatus(item.status)
   const name = plant?.common ?? 'Unknown plant'
-  const meta = [`× ${qtyLabel(item.qty_min, item.qty_max)}`, site ? `Site ${siteName(site)}` : 'No site yet', item.spot]
-    .filter(Boolean)
-    .join(' · ')
+  const where = site ? `Site ${siteName(site)}` : 'No site yet'
+  const meta = [`× ${qtyLabel(item.qty_min, item.qty_max)}`, asSite ? null : where, item.spot].filter(Boolean).join(' · ')
 
   return (
     <li className="plan-item" data-status={item.status}>
@@ -211,7 +239,7 @@ function PlanRow({
           role="checkbox"
           aria-checked={item.status !== 'to buy'}
           aria-disabled={item.status === 'planted' || item.status === 'skipped'}
-          aria-label={item.status === 'to buy' ? `Bought: ${name}` : `${STATUS_LABEL[item.status]}: ${name}`}
+          aria-label={`${item.status === 'to buy' ? 'Bought' : STATUS_LABEL[item.status]}: ${name}${asSite ? `, ${where}` : ''}`}
           onClick={() => {
             if (item.status === 'to buy') onChange({ status: 'bought' })
             else if (item.status === 'bought') onChange({ status: 'to buy' })
@@ -224,15 +252,20 @@ function PlanRow({
           )}
         </button>
         <button type="button" className="plan-main" aria-expanded={open} onClick={onToggle}>
-          <span className="plan-name">{name}</span>
-          {plant?.latin && <span className="latin plan-latin">{plant.latin}</span>}
+          <span className="plan-name">{asSite ? where : name}</span>
+          {!asSite && plant?.latin && <span className="latin plan-latin">{plant.latin}</span>}
           <span className="plan-meta">
             {item.status !== 'to buy' && <span className="status-chip">{STATUS_LABEL[item.status]}</span>}
             {meta}
           </span>
         </button>
         {next === 'planted' && (
-          <button type="button" className="choice small" aria-label={`Mark planted: ${name}`} onClick={() => onChange({ status: next })}>
+          <button
+            type="button"
+            className="choice small"
+            aria-label={`Mark planted: ${name}${asSite ? `, ${where}` : ''}`}
+            onClick={() => onChange({ status: next })}
+          >
             Mark planted
           </button>
         )}
@@ -240,6 +273,86 @@ function PlanRow({
       {open && (
         <PlanEditor item={item} name={name} sites={sites} nurseries={nurseries} onChange={onChange} onRemove={onRemove} seasonName={seasonName} />
       )}
+    </li>
+  )
+}
+
+// A plant going to several sites, as one card: "Great Camas · × 49 · 5 sites".
+// Its circle buys the lot; opening it shows each site with its own circle and editor.
+function PlantGroupRow({
+  group,
+  plant,
+  open,
+  onToggle,
+  onStatus,
+  children,
+}: {
+  group: PlantGroup
+  plant: Plant | undefined
+  open: boolean
+  onToggle: () => void
+  onStatus: (id: string, status: Status) => void
+  children: ReactNode
+}) {
+  const name = plant?.common ?? 'Unknown plant'
+  const status = groupStatus(group)
+  const n = group.items.length
+  const toBuy = group.counts['to buy']
+  const allBought = group.counts.bought === n
+  const inert = toBuy === 0 && !allBought
+  const got = n - toBuy - group.counts.skipped
+  const meta = [
+    `× ${qtyLabel(group.qtyMin, group.qtyMax)}`,
+    `${n} sites`,
+    status === 'mixed' && toBuy > 0 ? `${got} of ${n} bought` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  return (
+    <li className="plan-item" data-status={status === 'mixed' ? (toBuy > 0 ? 'to buy' : 'bought') : status}>
+      <div className="plan-row">
+        <button
+          type="button"
+          className="task-check"
+          role="checkbox"
+          aria-checked={toBuy === 0}
+          aria-disabled={inert}
+          aria-label={toBuy > 0 ? `Bought, all sites: ${name}` : `${allBought ? 'Bought' : 'Done'}: ${name}`}
+          onClick={() => {
+            if (toBuy > 0) {
+              for (const i of group.items) if (i.status === 'to buy') onStatus(i.id, 'bought')
+            } else if (allBought) {
+              for (const i of group.items) onStatus(i.id, 'to buy')
+            }
+          }}
+        >
+          {toBuy === 0 && (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" aria-hidden="true">
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+          )}
+        </button>
+        <button type="button" className="plan-main" aria-expanded={open} onClick={onToggle}>
+          <span className="plan-name">{name}</span>
+          {plant?.latin && <span className="latin plan-latin">{plant.latin}</span>}
+          <span className="plan-meta">
+            {status !== 'to buy' && status !== 'mixed' && <span className="status-chip">{STATUS_LABEL[status]}</span>}
+            {meta}
+          </span>
+        </button>
+        {allBought && (
+          <button
+            type="button"
+            className="choice small"
+            aria-label={`Mark planted, all sites: ${name}`}
+            onClick={() => group.items.forEach((i) => onStatus(i.id, 'planted'))}
+          >
+            Mark planted
+          </button>
+        )}
+      </div>
+      {open && <ul className="plan-sites">{children}</ul>}
     </li>
   )
 }

@@ -153,3 +153,39 @@ export function buyingSeason(year: number, month: number): string | null {
   if (month >= 2 && month <= 5) return `spring-${year}`
   return null
 }
+
+// One plant at one nursery, across the sites it's going to: "Great Camas × 49 · 5 sites".
+export interface PlantGroup {
+  plant_id: string
+  items: PlanItem[]
+  qtyMin: number
+  qtyMax: number
+  counts: Record<Status, number>
+}
+
+// A nursery's items as one group per plant, ordered like the rows were: anything
+// still to buy first, then by plant name. Within a group, sites in number order
+// (no site last).
+export function groupByPlant(items: PlanItem[], plants: Plant[], siteNumber: (id: string | null) => number | undefined = () => undefined) {
+  const byPlant = new Map<string, PlanItem[]>()
+  for (const i of items) {
+    if (!byPlant.has(i.plant_id)) byPlant.set(i.plant_id, [])
+    byPlant.get(i.plant_id)!.push(i)
+  }
+  const name = (id: string) => plants.find((p) => p.id === id)?.common ?? ''
+  const groups: PlantGroup[] = [...byPlant.entries()].map(([plant_id, list]) => ({
+    plant_id,
+    items: [...list].sort((a, b) => (siteNumber(a.site_id) ?? 999) - (siteNumber(b.site_id) ?? 999)),
+    qtyMin: list.reduce((n, i) => n + i.qty_min, 0),
+    qtyMax: list.reduce((n, i) => n + i.qty_max, 0),
+    counts: countByStatus(list),
+  }))
+  const rank = (g: PlantGroup) => Math.min(...g.items.map((i) => STATUSES.indexOf(i.status)))
+  return groups.sort((a, b) => rank(a) - rank(b) || name(a.plant_id).localeCompare(name(b.plant_id)))
+}
+
+// The group's one status, or 'mixed' when its sites differ.
+export function groupStatus(g: PlantGroup): Status | 'mixed' {
+  const present = STATUSES.filter((s) => g.counts[s] > 0)
+  return present.length === 1 ? present[0] : 'mixed'
+}

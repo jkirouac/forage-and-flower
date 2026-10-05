@@ -13,7 +13,7 @@ import {
   type Outcome,
   type Section,
 } from '../lib/month'
-import { buyingSeason, groupByNursery, qtyLabel, seasonLabel, type Group, type Plant, type PlanItem, type Site } from '../lib/plan'
+import { buyingSeason, groupByNursery, groupByPlant, qtyLabel, seasonLabel, type Group, type Plant, type PlanItem, type Site } from '../lib/plan'
 import { taskNamesPlant, type FullPlant } from '../lib/plants'
 import { MONTHS, monthHeading, shortDate } from '../lib/season'
 import { clearSummary } from '../lib/clear'
@@ -396,7 +396,7 @@ function BuyCards({
         <BuyCard
           key={g.nursery?.id ?? 'none'}
           group={g}
-          plantName={(id) => plants.find((p) => p.id === id)?.common ?? 'Unknown plant'}
+          plants={plants}
           siteNumber={(id) => sites.find((s) => s.id === id)?.number}
           onSet={onSet}
         />
@@ -407,19 +407,21 @@ function BuyCards({
 
 function BuyCard({
   group,
-  plantName,
+  plants,
   siteNumber,
   onSet,
 }: {
   group: Group
-  plantName: (id: string) => string
+  plants: Plant[]
   siteNumber: (id: string | null) => number | undefined
   onSet: (id: string, status: 'to buy' | 'bought') => void
 }) {
   const [open, setOpen] = useState(false)
   const name = group.nursery?.name ?? 'No nursery yet'
-  const toBuy = group.items.filter((i) => i.status === 'to buy').length
-  const bought = group.items.length - toBuy
+  // Counted by plant, not by site: Great Camas for five sites is one thing to buy.
+  const byPlant = groupByPlant(group.items, plants, siteNumber)
+  const toBuy = byPlant.filter((g) => g.counts['to buy'] > 0).length
+  const bought = byPlant.length - toBuy
   const where = group.nursery
     ? [group.nursery.location, group.nursery.last_checked ? `checked ${shortDate(group.nursery.last_checked)}` : null]
         .filter(Boolean)
@@ -446,19 +448,27 @@ function BuyCard({
       {open && (
         <div className="task-more">
           <ul className="buy-plants">
-            {group.items.map((i) => {
-              const got = i.status === 'bought'
-              const site = siteNumber(i.site_id)
-              const label = `${plantName(i.plant_id)} × ${qtyLabel(i.qty_min, i.qty_max)}${site ? ` · Site ${site}` : ''}`
+            {byPlant.map((g) => {
+              // One line per plant: its circle buys every site at once.
+              const left = g.items.filter((i) => i.status === 'to buy')
+              const got = left.length === 0
+              const n = g.items.length
+              const where =
+                n > 1 ? `${n} sites${!got && left.length < n ? ` · ${n - left.length} of ${n} bought` : ''}` : siteLine(siteNumber(g.items[0].site_id))
+              const name = plants.find((p) => p.id === g.plant_id)?.common ?? 'Unknown plant'
+              const label = `${name} × ${qtyLabel(g.qtyMin, g.qtyMax)}${where ? ` · ${where}` : ''}`
               return (
-                <li key={i.id} data-state={got ? 'done' : 'open'}>
+                <li key={g.plant_id} data-state={got ? 'done' : 'open'}>
                   <button
                     type="button"
                     className="task-check"
                     role="checkbox"
                     aria-checked={got}
                     aria-label={got ? `Not bought: ${label}` : `Bought: ${label}`}
-                    onClick={() => onSet(i.id, got ? 'to buy' : 'bought')}
+                    onClick={() => {
+                      if (got) g.items.forEach((i) => onSet(i.id, 'to buy'))
+                      else left.forEach((i) => onSet(i.id, 'bought'))
+                    }}
                   >
                     {got && <Tick />}
                   </button>
@@ -468,10 +478,12 @@ function BuyCard({
             })}
           </ul>
           <a className="task-link" href="#seasons">
-            Open in Seasons
+            Open in Shopping
           </a>
         </div>
       )}
     </li>
   )
 }
+
+const siteLine = (n: number | undefined) => (n ? `Site ${n}` : '')

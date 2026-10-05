@@ -18,7 +18,7 @@ interface Route {
 
 const TABS: { id: NavKind; label: string }[] = [
   { id: 'month', label: 'Month' },
-  { id: 'seasons', label: 'Seasons' },
+  { id: 'seasons', label: 'Shopping' },
   { id: 'plants', label: 'Plants' },
   { id: 'pollinators', label: 'Pollinators' },
 ]

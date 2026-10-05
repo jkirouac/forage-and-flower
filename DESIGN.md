@@ -64,11 +64,11 @@ This file started as a draft in October 2026. Rules marked **Built** are in the 
 ## Screens
 
 1. **This month.** A kicker line ("OCTOBER · VICTORIA 9a"), a serif title for the season's theme ("Fall planting window"), then this month and the next two under month headers (more on request), each with Do / Plant / Buy. A task moved on shows under next month's header ("From Oct"), not greyed out where it was. Tap a card to open it: the full note, the how-to link, links to the plants it names, and labelled Done / Move to November. **Buy** comes from the Seasons list being shopped for (fall Sep–Nov, spring Feb–May), one card per nursery that opens to its plants; ticking one marks it bought. Chips filter: All · Do · Plant · Buy. "Plant now" cards: Planned.
-2. **Seasons.** Fall and spring lists. Each plant shows quantity, site and status (to buy, bought, planted), grouped by nursery.
+2. **Shopping** (was Seasons, renamed October 2026). Fall and spring lists, grouped by nursery. One card per plant with its sites inside ("Great Camas · × 49 · 5 sites"): its circle buys every site at once, and opening it shows each site with its own circle, quantity and editor. Status runs to buy, bought, planted (or skipped).
 3. **Plants.** Your plants first, then the wider ranked lists. A plant page holds: common and Latin name, 12-month bar, sites, why it's recommended, where to buy, site rules, and the planting log.
 4. **Pollinator picks.** Plants ranked by support for threatened species, led by the threat-status tiebreaker in `perennial-flowers.md`. The year ring sits at the top, with a plain list below it for accessibility. **Built:** all 48 ranked plants; the ring's outer band is the rubric's critical windows (Dec–Mar winter, Feb–Apr emerging queens, Oct–Dec late season) and its petals the picks in flower each month, for our garden or all picks.
 
-Bottom navigation: Month · Seasons · Plants · Pollinators.
+Bottom navigation: Month · Shopping · Plants · Pollinators.
 
 ## Colour (Field Guide)
 

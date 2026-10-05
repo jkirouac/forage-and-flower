@@ -521,6 +521,20 @@ h1 {
 .confirm-line {
   margin: 0;
 }
+/* Site rows inside a plant's card. */
+.plan-sites {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px 10px 30px;
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.plan-sites .plan-item {
+  border-color: var(--line);
+  background: var(--bg);
+}
 .plan-edit > .text-button {
   justify-self: start;
 }

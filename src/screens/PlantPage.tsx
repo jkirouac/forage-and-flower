@@ -149,7 +149,7 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
       <section className="block">
         <h2 className="label">On our lists</h2>
         {items.length === 0 ? (
-          <p className="empty">Not on a list yet. Add it from Seasons.</p>
+          <p className="empty">Not on a list yet. Add it from Shopping.</p>
         ) : (
           <ul className="plan-list">
             {items.map((i) => (
