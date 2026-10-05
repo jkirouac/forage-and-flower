@@ -29,6 +29,7 @@ Turn the note into one or more items. Each item is either:
 How to write each item:
 - Keep the speaker's meaning and their words. Remove filler, restarts and repeats; fix grammar. Never add advice, reasons or steps they didn't say.
 - Tasks read as a short instruction starting with a verb ("Pick up fir mulch at Sooke Soil"). Notes read as one or two plain sentences.
+- When a nursery or garden centre below is meant, use its name exactly as listed. Speech recognition often mangles these ("suksoil" or "soups oil" for Sooke Soil), so match by sound.
 - When a plant in the garden's catalogue is meant, use its common name exactly as the catalogue writes it, and list its id in plant_ids. Match misheard or half-remembered names (Latin or common) to the closest catalogue plant only when you are confident.
 - Pick the month the item belongs in. Use what was said ("next month", "in March", "before the first frost", "this fall"); with no time given, use the current month. Give the year that month next falls in, counting the current month as this one.
 - Split the note only where there are clearly separate thoughts. Most notes are one item.
@@ -107,12 +108,13 @@ Deno.serve(async (req) => {
   if (!garden.data) return json({ error: 'Not part of a garden.' }, 403)
   const gardenId = garden.data.id
 
-  const [plants, sites, rules] = await Promise.all([
+  const [plants, sites, rules, nurseries] = await Promise.all([
     db.from('plants').select('id, common, latin').order('common'),
     db.from('sites').select('id, number, name, conditions').eq('garden_id', gardenId).order('number'),
     db.from('rules').select('id, topic, verdict, text, plant_id, tag, kind, site_id, garden_id'),
+    db.from('nurseries').select('name, location').order('name'),
   ])
-  const error = plants.error ?? sites.error ?? rules.error
+  const error = plants.error ?? sites.error ?? rules.error ?? nurseries.error
   if (error) return json({ error: "Couldn't read the garden." }, 500)
   const gardenRules = rules.data.filter((r) => r.garden_id === null || r.garden_id === gardenId)
 
@@ -124,6 +126,9 @@ Deno.serve(async (req) => {
     '',
     'Sites:',
     ...sites.data.map((s) => `- Site ${s.number}: ${s.name}${s.conditions ? `; ${s.conditions}` : ''}`),
+    '',
+    'Nurseries:',
+    ...nurseries.data.map((n) => `- ${n.name}${n.location ? ` (${n.location})` : ''}`),
     '',
     'Plant catalogue (id | common name | Latin name):',
     ...plants.data.map((p) => `${p.id} | ${p.common} | ${p.latin ?? ''}`),

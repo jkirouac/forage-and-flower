@@ -28,11 +28,15 @@ function endsWith(a: string[], b: string[]) {
   return b.length <= a.length && b.every((w, i) => a[a.length - b.length + i] === w)
 }
 
-// True when `next` is a longer version of `have`, or the same words with one
-// corrected near the end.
+// True when `next` is a longer or corrected version of `have`. Android re-hears
+// the whole sentence when you stop and may change a word anywhere ("soups oil"
+// -> "suksoil"), but always from the sentence's start, so the same first three
+// words mean the same sentence. Desktop's separate pieces almost never open
+// with the first three words of everything said so far.
+const SAME_START = 3
 function grows(have: string[], next: string[]) {
   const k = leadingMatch(have, next)
-  return have.length === 0 || k === have.length || (k >= 2 && k * 2 >= have.length)
+  return have.length === 0 || k === have.length || k >= SAME_START
 }
 
 export function mergeTexts(pieces: string[]): string {
@@ -57,12 +61,12 @@ export function mergeTexts(pieces: string[]): string {
   return tidy(`${before} ${latest}`)
 }
 
-// What's settled, and the words still forming after it.
+// What's settled, and the words still forming after it. Both come from one
+// merged text, so settled + forming never holds two versions of a sentence.
 export function mergeResults(results: SpeechPiece[]): { settled: string; forming: string } {
-  const settled = mergeTexts(results.filter((r) => r.isFinal).map((r) => r.transcript))
   const whole = mergeTexts(results.map((r) => r.transcript))
-  const s = words(settled)
-  const w = whole.split(' ').filter(Boolean)
-  if (leadingMatch(s, words(whole)) === s.length) return { settled, forming: w.slice(s.length).join(' ') }
-  return { settled, forming: mergeTexts(results.filter((r) => !r.isFinal).map((r) => r.transcript)) }
+  const finals = mergeTexts(results.filter((r) => r.isFinal).map((r) => r.transcript))
+  const all = whole.split(' ').filter(Boolean)
+  const k = leadingMatch(words(finals), words(whole))
+  return { settled: all.slice(0, k).join(' '), forming: all.slice(k).join(' ') }
 }
