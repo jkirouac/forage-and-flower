@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --test scripts/month.test.ts scripts/plan.test.ts scripts/plants.test.ts scripts/pollinators.test.ts scripts/email.test.ts scripts/notes.test.ts scripts/transcript.test.ts scripts/yard.test.ts scripts/sitetasks.test.ts",
+    "test": "node --test scripts/month.test.ts scripts/plan.test.ts scripts/plants.test.ts scripts/pollinators.test.ts scripts/email.test.ts scripts/notes.test.ts scripts/transcript.test.ts scripts/yard.test.ts scripts/sitetasks.test.ts scripts/schedule.test.ts",
     "preview": "vite preview",
     "icons": "node scripts/icons.mjs",
     "import:garden": "node --env-file-if-exists=.env.local scripts/import-garden.mjs",

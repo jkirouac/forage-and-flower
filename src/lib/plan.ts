@@ -1,6 +1,8 @@
 // The Seasons lists: plan items for a season, grouped by nursery so each group is
 // one shopping trip. Pure, so it can be tested without a database (scripts/plan.test.ts).
 
+import type { ScheduleRow } from './schedule.ts'
+
 export type Status = 'to buy' | 'bought' | 'planted' | 'skipped'
 export const STATUSES: Status[] = ['to buy', 'bought', 'planted', 'skipped']
 
@@ -37,7 +39,8 @@ export interface Site {
   designs?: Design[] // the site's plan drawing and concept images (private bucket)
 }
 
-// One of a site's design files, as the upload script lists them.
+// One of a site's design files, as the upload script lists them. A plan carries its
+// Plant Schedule as data (scripts/designs.mjs), shown natively on the site page.
 export interface Design {
   kind: 'plan' | 'concept'
   file: string
@@ -45,6 +48,8 @@ export interface Design {
   title: string
   width?: number
   height?: number
+  schedule?: ScheduleRow[]
+  scheduleNote?: string
 }
 
 export interface Nursery {

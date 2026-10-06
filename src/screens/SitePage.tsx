@@ -4,7 +4,10 @@ import { useSeasons } from '../lib/seasons'
 import { useGarden } from '../lib/garden'
 import { useDesignUrls } from '../lib/designs'
 import { buildMonth, upcomingMonths, type Section } from '../lib/month'
-import { summarizeRules, type FullPlant, type Rule } from '../lib/plants'
+import { plantTraits, summarizeRules, type FullPlant, type Rule } from '../lib/plants'
+import { bloomRows, scheduleStatus, type ScheduleRow } from '../lib/schedule'
+import { isCritical } from '../lib/pollinators'
+import { Icon } from './Icons'
 import { matchPlant, siteContents, type YardSite } from '../lib/yard'
 import { shortName, tasksForSite } from '../lib/sitetasks'
 import { MONTHS } from '../lib/season'
@@ -74,7 +77,7 @@ export default function SitePage({ userId, site: siteNumber }: { userId: string;
       </header>
       <hr className="rule" />
 
-      <Designs designs={site.designs ?? []} urls={urls} />
+      <Designs designs={site.designs ?? []} urls={urls} here={here} plants={plants} month={month} />
 
       <section className="block">
         <h2 className="label">To do here</h2>
@@ -178,7 +181,19 @@ export default function SitePage({ userId, site: siteNumber }: { userId: string;
 
 // The latest plan, on white as it was drawn, and the concept images as a strip of
 // thumbnails. Any of them opens full screen.
-function Designs({ designs, urls }: { designs: Design[]; urls: Record<string, string> }) {
+function Designs({
+  designs,
+  urls,
+  here,
+  plants,
+  month,
+}: {
+  designs: Design[]
+  urls: Record<string, string>
+  here: { inGround: FullPlant[]; onLists: FullPlant[] }
+  plants: FullPlant[]
+  month: number
+}) {
   const [open, setOpen] = useState<number | null>(null)
   if (designs.length === 0)
     return (
@@ -198,6 +213,13 @@ function Designs({ designs, urls }: { designs: Design[]; urls: Record<string, st
           {urls[plan.file] ? <img src={urls[plan.file]} alt={plan.title} /> : <span className="empty">Loading the plan…</span>}
         </button>
       )}
+      {plan?.schedule && plan.schedule.length > 0 && (
+        <>
+          <Schedule rows={plan.schedule} note={plan.scheduleNote} here={here} plants={plants} />
+          <BloomChart rows={plan.schedule} month={month} />
+        </>
+      )}
+      {concepts.length > 0 && <h3 className="label">Concept images</h3>}
       {concepts.length > 0 && (
         <ul className="design-strip" aria-label="Concept images">
           {concepts.map((d, i) => (
@@ -211,6 +233,146 @@ function Designs({ designs, urls }: { designs: Design[]; urls: Record<string, st
       )}
       {open !== null && pictures[open]?.src && <Lightbox pictures={pictures} start={open} onClose={() => setOpen(null)} />}
     </section>
+  )
+}
+
+// The plan's Plant Schedule, natively: each plant with the drawing's key swatch (to
+// find it on the drawing), how many and how big, its role, who it feeds, and
+// where it stands in the garden: in the ground, planned, or not planned yet.
+const STATUS_LABEL = { 'in the ground': 'In the ground', planned: 'Planned', 'not planned': 'Not planned yet' } as const
+
+function Schedule({
+  rows,
+  note,
+  here,
+  plants,
+}: {
+  rows: ScheduleRow[]
+  note?: string
+  here: { inGround: FullPlant[]; onLists: FullPlant[] }
+  plants: FullPlant[]
+}) {
+  return (
+    <div className="block">
+      <h3 className="label">Plant schedule</h3>
+      {note && <p className="group-sub schedule-note">{note}</p>}
+      <ul className="schedule">
+        {rows.map((r, i) => {
+          const { status, plantId } = scheduleStatus(r, here)
+          // Not on this site yet: still link to the plant's page if the catalogue has it.
+          const id = plantId ?? matchPlant(r.common, plants) ?? matchPlant(r.latin, plants)
+          const feeds = plantTraits({ pollinators: r.pollinators, why: null, native: false }).pollinators
+          return (
+            <li key={`${r.key}-${i}`} className="schedule-row">
+              <KeySwatch row={r} />
+              <div className="schedule-body">
+                {id ? (
+                  <a className="plan-name" href={`#plant/${encodeURIComponent(id)}`}>
+                    {r.common || r.latin}
+                  </a>
+                ) : (
+                  <span className="plan-name">{r.common || r.latin}</span>
+                )}
+                {r.latin && r.latin !== r.common && <span className="latin plan-latin">{r.latin}</span>}
+                <span className="plan-meta">
+                  {[r.qty && `× ${r.qty}`, r.size, r.bloom && r.bloom !== '—' ? `flowers ${r.bloom}` : null].filter(Boolean).join(' · ')}
+                </span>
+                {r.role && <span className="schedule-role">{r.role}</span>}
+                {feeds.length > 0 && (
+                  <span className="feeds-strip" aria-label={`Feeds ${feeds.map((t) => t.label.toLowerCase()).join(', ')}`}>
+                    {feeds.map((t) => (
+                      <Icon key={t.key} name={t.key} size={16} />
+                    ))}
+                  </span>
+                )}
+              </div>
+              <span className="schedule-status" data-status={status}>
+                {STATUS_LABEL[status]}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+// The drawing's key: a circle in the plant's colours with its two letters, the
+// letters light or dark to read on the fill.
+function KeySwatch({ row }: { row: Pick<ScheduleRow, 'key' | 'fill' | 'stroke'> }) {
+  const dark = (hex: string | null) => {
+    const m = hex?.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)
+    if (!m) return false
+    const h = m[1].length === 3 ? m[1].replace(/./g, (c) => c + c) : m[1]
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.45
+  }
+  return (
+    <span
+      className="key-swatch-plant"
+      aria-hidden="true"
+      style={{ background: row.fill ?? 'transparent', borderColor: row.stroke ?? row.fill ?? 'var(--line)', color: dark(row.fill) ? '#f5f1e6' : '#22251f' }}
+    >
+      {row.key}
+    </span>
+  )
+}
+
+// Through the year: when each plant in the design flowers, in its own colour, with
+// the pollinators' critical months marked above and a count of what's in flower
+// below (a critical month with nothing is a gap).
+const LETTERS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
+
+// "Saskatoon (existing)" -> "Saskatoon"; "Sour cherry · semi-dwarf" -> "Sour cherry".
+const chartName = (r: Pick<ScheduleRow, 'common' | 'latin'>) =>
+  (r.common || r.latin).replace(/\s*\(.*?\)/g, '').split(/\s+·\s+/)[0].trim() || r.common || r.latin
+
+function BloomChart({ rows: schedule, month }: { rows: ScheduleRow[]; month: number }) {
+  const { rows, counts, gaps } = bloomRows(schedule)
+  const flowering = rows.filter((r) => r.months.length > 0)
+  if (flowering.length === 0) return null
+  const now = (i: number) => (i + 1 === month ? ' now' : '')
+  return (
+    <div className="block">
+      <h3 className="label">Through the year</h3>
+      <div className="bloom-chart">
+        <div className="bloom-row bloom-head" aria-hidden="true">
+          <span />
+          {LETTERS.map((l, i) => (
+            <span key={i} className={`bloom-letter${now(i)}`}>
+              {l}
+            </span>
+          ))}
+        </div>
+        <div className="bloom-row" aria-hidden="true">
+          <span className="bloom-name muted">Pollinators' need</span>
+          {LETTERS.map((_, i) => (
+            <span key={i} className={`bloom-cell${isCritical(i + 1) ? ' critical' : ''}${now(i)}`} />
+          ))}
+        </div>
+        {flowering.map((r, k) => (
+          <div key={`${r.key}-${k}`} className="bloom-row" role="img" aria-label={`${r.common || r.latin}: ${r.bloom}`}>
+            <span className="bloom-name">{chartName(r)}</span>
+            {LETTERS.map((_, i) => (
+              <span
+                key={i}
+                className={`bloom-cell${r.months.includes(i + 1) ? ' on' : ''}${now(i)}`}
+                style={r.months.includes(i + 1) ? { background: r.fill ?? 'var(--bloom)' } : undefined}
+              />
+            ))}
+          </div>
+        ))}
+        <div className="bloom-row bloom-count" role="img" aria-label={`In flower each month: ${counts.map((c, i) => `${LETTERS[i]} ${c}`).join(', ')}`}>
+          <span className="bloom-name">In flower</span>
+          {counts.map((c, i) => (
+            <span key={i} className={`bloom-num${gaps[i] ? ' gap' : ''}${now(i)}`}>
+              {gaps[i] ? '–' : c}
+            </span>
+          ))}
+        </div>
+      </div>
+      {gaps.some(Boolean) && <p className="task-detail">A dash is a critical month with nothing in this design in flower.</p>}
+    </div>
   )
 }
 
