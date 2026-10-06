@@ -54,6 +54,7 @@ function applyNotes(g: Garden, ops: Op[]): Garden {
   for (const op of ops) {
     if (op.kind === 'task-insert' && !tasks.some((t) => t.id === op.row.id)) tasks = [...tasks, op.row as unknown as Task]
     else if (op.kind === 'task-delete') tasks = tasks.filter((t) => t.id !== op.id)
+    else if (op.kind === 'task-update') tasks = tasks.map((t) => (t.id === op.id ? { ...t, ...op.patch } : t))
     else if (op.kind === 'note-insert' && !notes.some((n) => n.id === op.row.id)) notes = [...notes, op.row as unknown as Note]
     else if (op.kind === 'note-delete') notes = notes.filter((n) => n.id !== op.id)
   }
@@ -70,7 +71,7 @@ export async function loadGarden(userId: string, year: number): Promise<Garden> 
       supabase.from('members').select('user_id, initials').eq('garden_id', gardenId),
       supabase
         .from('tasks')
-        .select('id, section, title, detail, link, month, every_month, position, year, spoken')
+        .select('id, section, title, detail, link, month, every_month, position, year, spoken, site_id')
         .eq('garden_id', gardenId)
         .order('position'),
       supabase
@@ -140,6 +141,8 @@ export function useGarden(userId: string, year: number) {
     [change, gardenId, userId],
   )
   const removeTask = useCallback((id: string) => change([{ kind: 'task-delete', id }]), [change])
+  // Set a task to a site, or back to garden-wide (null).
+  const setTaskSite = useCallback((id: string, siteId: string | null) => change([{ kind: 'task-update', id, patch: { site_id: siteId } }]), [change])
   const removeNote = useCallback((id: string) => change([{ kind: 'note-delete', id }]), [change])
 
   const tick = useCallback(
@@ -162,5 +165,5 @@ export function useGarden(userId: string, year: number) {
     [gardenId],
   )
 
-  return { garden, error, pending, reload, tick, clear, addItems, removeTask, removeNote }
+  return { garden, error, pending, reload, tick, clear, addItems, removeTask, removeNote, setTaskSite }
 }

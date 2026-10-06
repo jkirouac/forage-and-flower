@@ -44,7 +44,7 @@ export async function loadSeasons(userId: string): Promise<SeasonsData> {
         .select('id, garden_id, plant_id, site_id, season, status, qty_min, qty_max, nursery_id, spot, notes, cleared_at, status_by')
         .eq('garden_id', gardenId),
       supabase.from('plants').select('id, key, common, latin, kind').order('common'),
-      supabase.from('sites').select('id, number, name, conditions, existing').eq('garden_id', gardenId).order('number'),
+      supabase.from('sites').select('id, number, name, conditions, existing, designs').eq('garden_id', gardenId).order('number'),
       supabase.from('nurseries').select('id, name, location, last_checked').order('name'),
       supabase.from('gardens').select('map').eq('id', gardenId).maybeSingle(),
     ])

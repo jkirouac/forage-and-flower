@@ -59,7 +59,9 @@ export interface Planting {
 export function baseName(common: string) {
   return common
     .toLowerCase()
-    .replace(/'[^']*'|"[^"]*"|\([^)]*\)/g, ' ')
+    // A cultivar in quotes may hold an apostrophe ('Walker's Low'): trim from the
+    // first quote to the last.
+    .replace(/'.*'|"[^"]*"|\([^)]*\)/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }

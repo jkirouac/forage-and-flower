@@ -26,6 +26,8 @@ export type Op =
   // Voice notes: a one-off task, or a journal note under a month.
   | { kind: 'task-insert'; row: Record<string, unknown> & { id: string } }
   | { kind: 'task-delete'; id: string }
+  // A task's site (set from its note on To do, or the site page).
+  | { kind: 'task-update'; id: string; patch: Record<string, unknown> }
   | { kind: 'note-insert'; row: Record<string, unknown> & { id: string } }
   | { kind: 'note-delete'; id: string }
   // What's growing at a site (sites.existing), edited on the Plants map.
@@ -65,6 +67,15 @@ export function addOp(ops: Op[], op: Op): Op[] {
         (o) => !((o.kind === 'plan-insert' && o.row.id === op.id) || (o.kind === 'plan-update' && o.id === op.id)),
       )
       return wasNew ? rest : [...rest, op]
+    }
+    case 'task-update': {
+      // An unsent new task takes the change into its insert; later edits win.
+      const insert = ops.find((o): o is Extract<Op, { kind: 'task-insert' }> => o.kind === 'task-insert' && o.row.id === op.id)
+      if (insert) return ops.map((o) => (o === insert ? { ...insert, row: { ...insert.row, ...op.patch } } : o))
+      const earlier = ops.find((o) => o.kind === 'task-update' && o.id === op.id)
+      if (earlier && earlier.kind === 'task-update')
+        return [...ops.filter((o) => o !== earlier), { ...op, patch: { ...earlier.patch, ...op.patch } }]
+      return [...ops, op]
     }
     case 'site-update': {
       // Later edits to the same site win; one update goes out.

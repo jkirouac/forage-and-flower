@@ -92,6 +92,8 @@ async function send(op: Op) {
       return db.from('tasks').upsert(op.row, { onConflict: 'id', ignoreDuplicates: true })
     case 'task-delete':
       return db.from('tasks').delete().eq('id', op.id)
+    case 'task-update':
+      return db.from('tasks').update(op.patch).eq('id', op.id)
     case 'note-insert':
       return db.from('notes').upsert(op.row, { onConflict: 'id', ignoreDuplicates: true })
     case 'note-delete':

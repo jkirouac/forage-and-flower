@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Month from './screens/Month'
 import GardenTab from './screens/Garden'
+import SitePage from './screens/SitePage'
 import Plants from './screens/Plants'
 import PlantPage from './screens/PlantPage'
 import Pollinators from './screens/Pollinators'
@@ -23,8 +24,8 @@ interface Route {
 }
 
 const TABS: { id: NavKind; label: string }[] = [
-  { id: 'todo', label: 'To do' },
   { id: 'garden', label: 'Garden' },
+  { id: 'todo', label: 'To do' },
   { id: 'plants', label: 'Plants' },
   { id: 'pollinators', label: 'Pollinators' },
 ]
@@ -41,7 +42,8 @@ function routeFromHash(): Route {
   if (month !== null) return { screen: 'pollinators', month }
   const view = todoFromHash(id)
   if (view !== null) return { screen: 'todo', view }
-  return { screen: id === 'settings' || TABS.some((t) => t.id === id) ? (id as Screen) : 'todo', view: 'all' }
+  // Garden is where the app opens.
+  return { screen: id === 'settings' || TABS.some((t) => t.id === id) ? (id as Screen) : 'garden' }
 }
 
 export default function App() {
@@ -85,13 +87,13 @@ function Garden({ userId }: { userId: string }) {
 
   useEffect(() => {
     window.scrollTo(0, 0)
-  }, [screen, plantId])
+  }, [screen, plantId, site])
 
   return (
     <div className="app">
       <main className="screen">
         {screen === 'todo' && <Month userId={userId} view={view ?? 'all'} />}
-        {screen === 'garden' && <GardenTab userId={userId} site={site ?? null} />}
+        {screen === 'garden' && (site ? <SitePage key={site} userId={userId} site={site} /> : <GardenTab userId={userId} />)}
         {screen === 'plants' && <Plants userId={userId} />}
         {screen === 'plant' && plantId && <PlantPage key={plantId} userId={userId} plantId={plantId} />}
         {screen === 'pollinators' && <Pollinators userId={userId} month={month ?? null} />}

@@ -33,6 +33,7 @@ How to write each item:
 - When a plant in the garden's catalogue is meant, use its common name exactly as the catalogue writes it, and list its id in plant_ids. Match misheard or half-remembered names (Latin or common) to the closest catalogue plant only when you are confident.
 - Pick the month the item belongs in. Use what was said ("next month", "in March", "before the first frost", "this fall"); with no time given, use the current month. Give the year that month next falls in, counting the current month as this one.
 - Split the note only where there are clearly separate thoughts. Most notes are one item.
+- For a task about one site (named, like "the berm", or clearly where it happens), give that site's number in site_number; for anything garden-wide, or for a note, give 0.
 
 Garden rules: if an item plans something that one of the garden's rules below forbids for that plant or site, add a clash with that rule's id and one short sentence saying what to do instead, in the rule's own terms ("Site 4 is a lean site: no castings."). Flag a clash only when a rule directly applies. Otherwise leave clashes empty.`
 
@@ -49,6 +50,7 @@ const SCHEMA = {
           text: { type: 'string' },
           year: { type: 'integer' },
           month: { type: 'integer' },
+          site_number: { type: 'integer' },
           plant_ids: { type: 'array', items: { type: 'string' } },
           clashes: {
             type: 'array',
@@ -60,7 +62,7 @@ const SCHEMA = {
             },
           },
         },
-        required: ['kind', 'section', 'text', 'year', 'month', 'plant_ids', 'clashes'],
+        required: ['kind', 'section', 'text', 'year', 'month', 'site_number', 'plant_ids', 'clashes'],
         additionalProperties: false,
       },
     },
@@ -187,6 +189,7 @@ Deno.serve(async (req) => {
     plantIds: new Set(plants.data.map((p) => p.id)),
     ruleIds: new Set(gardenRules.map((r) => r.id)),
     today: { year: today.year, month: today.month },
+    sites: new Map(sites.data.map((s) => [s.number, s.id])),
   })
   if (items.length === 0) return json({ error: 'Nothing usable came back.' }, 502)
   return json({ items })

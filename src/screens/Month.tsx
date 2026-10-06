@@ -54,7 +54,7 @@ export default function Month({ userId, view }: { userId: string; view: TodoView
   const year = now.getFullYear()
   const month = now.getMonth() + 1
   const { month: monthName, theme } = monthHeading(now)
-  const { garden, error, pending, reload, tick, clear, addItems, removeTask, removeNote } = useGarden(userId, year)
+  const { garden, error, pending, reload, tick, clear, addItems, removeTask, removeNote, setTaskSite } = useGarden(userId, year)
   const seasons = useSeasons(userId)
   const catalogue = useCatalogue(userId)
   const filter = view
@@ -207,6 +207,8 @@ export default function Month({ userId, view }: { userId: string; view: TodoView
                         onMove={(origin, to) => moveTask(item.task.id, origin, { year: l.year, month: l.month }, to)}
                         onHint={(text) => setNotice({ text })}
                         drag={drag}
+                        sites={seasons.data?.sites ?? []}
+                        onSite={(siteId) => setTaskSite(item.task.id, siteId)}
                       />
                     ))}
                   </ul>
@@ -258,6 +260,8 @@ export default function Month({ userId, view }: { userId: string; view: TodoView
                           onMove={(origin, to) => moveTask(item.task.id, origin, { year: l.year, month: l.month }, to)}
                           onHint={(text) => setNotice({ text })}
                           drag={drag}
+                          sites={seasons.data?.sites ?? []}
+                          onSite={(siteId) => setTaskSite(item.task.id, siteId)}
                         />
                       ))}
                     </ul>
@@ -364,7 +368,7 @@ export default function Month({ userId, view }: { userId: string; view: TodoView
               />
             )}
           </div>
-          {speaking && <VoiceNote today={{ year, month }} plants={plants} onSave={saveNote} onClose={() => setSpeaking(false)} />}
+          {speaking && <VoiceNote today={{ year, month }} plants={plants} sites={seasons.data?.sites ?? []} onSave={saveNote} onClose={() => setSpeaking(false)} />}
         </>
       )}
     </>
@@ -397,7 +401,7 @@ const HOLD_MS = 450
 const HOLD_TOLERANCE = { x: 32, y: 12 }
 const EDGE = 90 // px from the top or bottom where a drag scrolls the page
 
-interface DragApi {
+export interface DragApi {
   taskId: string | null
   over: { key: string; valid: boolean } | null
   ghost: { top: number; left: number; width: number; title: string } | null
@@ -484,7 +488,9 @@ function useDragToMonth(): DragApi {
   }
 }
 
-function TaskRow({
+// One task card, used on To do and on a site's page. On a site page the card can't
+// be dragged between months (canMove false) and doesn't show its own site.
+export function TaskRow({
   item,
   initials,
   nextName,
@@ -498,6 +504,11 @@ function TaskRow({
   onMove,
   onHint,
   drag,
+  sites = [],
+  onSite,
+  canMove = true,
+  because,
+  showSite = true,
 }: {
   item: Item
   initials: string | undefined
@@ -512,6 +523,11 @@ function TaskRow({
   onMove: (origin: MonthRef, to: MonthRef) => void
   onHint: (text: string) => void
   drag: DragApi
+  sites?: { id: string; number: number; name: string }[]
+  onSite?: (siteId: string | null) => void // set the task's site; absent hides the choice
+  canMove?: boolean
+  because?: string | null // on a site page: the plant that put a garden-wide task here
+  showSite?: boolean // false on the site's own page
 }) {
   const { task, check, pushedFrom } = item
   const done = check?.outcome === 'done'
@@ -529,7 +545,7 @@ function TaskRow({
   const onControl = (target: EventTarget | null) => !!(target as HTMLElement | null)?.closest('a, button, select')
 
   function down(e: PointerEvent<HTMLLIElement>) {
-    if ((e.pointerType === 'mouse' && e.button !== 0) || onControl(e.target)) return
+    if ((e.pointerType === 'mouse' && e.button !== 0) || onControl(e.target) || !canMove) return
     const card = e.currentTarget
     const { clientX: x, clientY: y, pointerId: id } = e
     setPressed(true)
@@ -590,6 +606,7 @@ function TaskRow({
     onSet(done ? null : 'done')
   }
 
+  const site = showSite ? sites.find((x) => x.id === task.site_id) : undefined
   const when = check ? new Date(check.done_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : ''
   const later = months.filter((m) => isTarget(m))
 
@@ -630,8 +647,10 @@ function TaskRow({
               ),
             )}
           </span>
-          {(pushedFrom || task.every_month || check) && (
+          {(pushedFrom || task.every_month || check || (onSite && site) || because) && (
             <span className="task-meta">
+              {onSite && site && <a href={`#garden/site/${site.number}`}>Site {site.number}</a>}
+              {because && <span>{because} grows here</span>}
               {pushedFrom && !check && <span>From {MONTHS_SHORT[pushedFrom - 1]}</span>}
               {task.every_month && !check && <span>Every month</span>}
               {done && (
@@ -659,7 +678,7 @@ function TaskRow({
               Done by {initials ?? 'someone'} on {when}.
             </p>
           )}
-          {!task.every_month && !done && !pushed && later.length > 0 && (
+          {canMove && !task.every_month && !done && !pushed && later.length > 0 && (
             <label className="move-to">
               Move to
               <select
@@ -685,6 +704,19 @@ function TaskRow({
             </details>
           )}
           {!task.detail && !task.link && !task.spoken && !(pushedFrom && !check) && !done && <p className="task-detail">No note for this one.</p>}
+          {onSite && sites.length > 0 && (
+            <label className="move-to">
+              Site
+              <select value={task.site_id ?? ''} onChange={(e) => onSite(e.target.value || null)}>
+                <option value="">No particular site</option>
+                {sites.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.number} · {x.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {onRemove && (
             <button type="button" className="text-button" onClick={onRemove}>
               Remove this card

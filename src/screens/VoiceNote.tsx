@@ -17,11 +17,13 @@ const TIDY_TIMEOUT = 20_000
 export default function VoiceNote({
   today,
   plants,
+  sites = [],
   onSave,
   onClose,
 }: {
   today: MonthRef
   plants: FullPlant[]
+  sites?: { id: string; number: number; name: string }[]
   onSave: (items: DraftItem[], spoken: string) => void
   onClose: () => void
 }) {
@@ -206,7 +208,7 @@ export default function VoiceNote({
           <>
             <ul className="drafts">
               {items.map((item, i) => (
-                <Draft key={i} item={item} months={months} plants={plants} onChange={(patch) => edit(i, patch)} />
+                <Draft key={i} item={item} months={months} plants={plants} sites={sites} onChange={(patch) => edit(i, patch)} />
               ))}
             </ul>
             <details className="spoken">
@@ -233,11 +235,13 @@ function Draft({
   item,
   months,
   plants,
+  sites,
   onChange,
 }: {
   item: DraftItem
   months: MonthRef[]
   plants: FullPlant[]
+  sites: { id: string; number: number; name: string }[]
   onChange: (patch: Partial<DraftItem>) => void
 }) {
   const linked = linkPlantNames(item.text, plants).filter((p) => p.plantId)
@@ -279,6 +283,19 @@ function Draft({
           </select>
         </label>
       </div>
+      {item.kind === 'task' && sites.length > 0 && (
+        <label className="move-to draft-month">
+          <span className="visually-hidden">Site</span>
+          <select value={item.site_id ?? ''} onChange={(e) => onChange({ site_id: e.target.value || null })}>
+            <option value="">No particular site</option>
+            {sites.map((x) => (
+              <option key={x.id} value={x.id}>
+                Site {x.number} · {x.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="field">
         <span className="visually-hidden">{item.kind === 'task' ? 'Task' : 'Note'}</span>
         <textarea className="note-field" rows={item.kind === 'task' ? 2 : 3} value={item.text} onChange={(e) => onChange({ text: e.target.value })} />

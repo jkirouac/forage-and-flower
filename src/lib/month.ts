@@ -21,6 +21,7 @@ export interface Task {
   position: number
   year?: number | null // set on one-off tasks; null or missing means every year
   spoken?: string | null // what was said, for tasks added by voice
+  site_id?: string | null // set to one site (the site page's to-dos); null is garden-wide
 }
 
 // A journal note under a month ("Camas by the path came up thin").
@@ -117,7 +118,7 @@ export type TodoView = 'all' | Section | 'notes'
 // #seasons (the old Shopping tab) is To do › Buy. Anything else is null.
 export function todoFromHash(hash: string): TodoView | null {
   const id = hash.replace(/^#/, '')
-  if (id === 'todo' || id === 'month' || id === '') return 'all'
+  if (id === 'todo' || id === 'month') return 'all'
   if (id === 'seasons') return 'buy'
   const m = id.match(/^todo\/(do|plant|buy|notes)$/)
   return m ? (m[1] as TodoView) : null

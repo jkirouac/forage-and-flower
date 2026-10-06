@@ -1767,3 +1767,127 @@ h1 {
   font-size: 1.4rem;
   line-height: 1;
 }
+
+/* Site page (SitePage.tsx): the site's colour as a stripe beside its name. */
+.site-head-page {
+  padding-left: 14px;
+  border-left: 6px solid var(--c, var(--lichen));
+}
+.site-month {
+  margin-top: 4px;
+}
+/* The plan drawing, on white as drawn, in both themes. */
+.design-plan {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  cursor: zoom-in;
+}
+.design-plan img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.design-strip {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 4px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.design-strip li {
+  flex: none;
+  scroll-snap-align: start;
+}
+.design-strip button {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--line);
+  cursor: zoom-in;
+}
+.design-strip img,
+.design-strip span {
+  display: block;
+  width: 160px;
+  height: 120px;
+  object-fit: cover;
+}
+
+/* Full-screen pictures (Lightbox.tsx). */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: #111;
+  color: #f5f1e6;
+}
+.lightbox:focus {
+  outline: none;
+}
+.lightbox-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 8px 8px 16px;
+}
+.lightbox-count {
+  color: #b9b4a6;
+}
+.lightbox-close {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+.lightbox-stage {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.lightbox-stage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  cursor: zoom-in;
+}
+.lightbox-stage img.paper {
+  background: #fff;
+}
+.lightbox-stage[data-zoom] {
+  place-items: start;
+  overflow: auto;
+  touch-action: auto;
+}
+.lightbox-stage[data-zoom] img {
+  max-width: none;
+  max-height: none;
+  width: 250%;
+  cursor: zoom-out;
+}
+.lightbox-nav {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 16px calc(env(safe-area-inset-bottom, 0px) + 12px);
+}
+.lightbox-nav .choice {
+  background: #222;
+  border-color: #444;
+  color: #f5f1e6;
+}

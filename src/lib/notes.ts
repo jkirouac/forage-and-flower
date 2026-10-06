@@ -22,6 +22,7 @@ export interface DraftItem {
   month: number
   plant_ids: string[]
   clashes: Clash[]
+  site_id?: string | null // tasks only: set to one site, else garden-wide
 }
 
 export interface MonthRef {
@@ -48,7 +49,10 @@ export function intoWindow(today: MonthRef, year: unknown, month: unknown): Mont
 
 // Keeps only what's usable from Claude's reply: known plant and rule ids, a month
 // in the window, a section for every task, non-empty text.
-export function cleanItems(raw: unknown, known: { plantIds: Set<string>; ruleIds: Set<string>; today: MonthRef }): DraftItem[] {
+export function cleanItems(
+  raw: unknown,
+  known: { plantIds: Set<string>; ruleIds: Set<string>; today: MonthRef; sites?: Map<number, string> },
+): DraftItem[] {
   const items = (raw as { items?: unknown })?.items
   if (!Array.isArray(items)) return []
   const out: DraftItem[] = []
@@ -65,7 +69,9 @@ export function cleanItems(raw: unknown, known: { plantIds: Set<string>; ruleIds
           .filter((c) => typeof c?.rule_id === 'string' && known.ruleIds.has(c.rule_id) && typeof c.text === 'string' && c.text.trim())
           .map((c) => ({ rule_id: c.rule_id as string, text: (c.text as string).trim() }))
       : []
-    out.push({ kind, section, text, ...intoWindow(known.today, it.year, it.month), plant_ids, clashes })
+    // A task about one site gets that site; a number the garden doesn't have is dropped.
+    const site_id = kind === 'task' && Number.isInteger(it.site_number) ? (known.sites?.get(it.site_number as number) ?? null) : null
+    out.push({ kind, section, text, ...intoWindow(known.today, it.year, it.month), plant_ids, clashes, site_id })
   }
   return out
 }
@@ -94,6 +100,7 @@ export function toOps(items: DraftItem[], spoken: string, gardenId: string, user
               every_month: false,
               position: 0,
               plant_id: i.plant_ids.length === 1 ? i.plant_ids[0] : null,
+              site_id: i.site_id ?? null,
               spoken: said,
               created_by: userId,
               source: 'voice',

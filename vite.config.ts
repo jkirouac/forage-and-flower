@@ -24,8 +24,9 @@ function contentSecurityPolicy(): Plugin {
           "default-src 'self'",
           `script-src 'self' ${inline.join(' ')}`,
           "style-src 'self' 'unsafe-inline'",
-          // Plant photos come from Wikimedia Commons.
-          "img-src 'self' data: blob: https://upload.wikimedia.org https://thumb.wikimedia.org",
+          // Plant photos come from Wikimedia Commons; site designs from the garden's
+          // private bucket (signed links).
+          "img-src 'self' data: blob: https://upload.wikimedia.org https://thumb.wikimedia.org https://*.supabase.co",
           "font-src 'self' data:",
           "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
           "worker-src 'self'",
@@ -78,6 +79,18 @@ export default defineConfig({
             options: {
               cacheName: 'plant-photos',
               expiration: { maxEntries: 150, maxAgeSeconds: 60 * 24 * 60 * 60 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          // Site designs you've opened stay on the phone. Signed links change, so the
+          // cache ignores the token; the path is the file.
+          {
+            urlPattern: /\/storage\/v1\/object\/sign\/garden-designs\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'site-designs',
+              matchOptions: { ignoreSearch: true },
+              expiration: { maxEntries: 80, maxAgeSeconds: 180 * 24 * 60 * 60 },
               cacheableResponse: { statuses: [200] },
             },
           },

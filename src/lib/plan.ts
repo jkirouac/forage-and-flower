@@ -34,6 +34,17 @@ export interface Site {
   name: string
   conditions?: string | null
   existing?: string[] // plants already growing there, from the garden notes
+  designs?: Design[] // the site's plan drawing and concept images (private bucket)
+}
+
+// One of a site's design files, as the upload script lists them.
+export interface Design {
+  kind: 'plan' | 'concept'
+  file: string
+  thumb?: string
+  title: string
+  width?: number
+  height?: number
 }
 
 export interface Nursery {
