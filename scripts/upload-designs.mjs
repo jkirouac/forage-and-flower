@@ -28,16 +28,29 @@ if (!service) throw new Error('No service_role key; is the Supabase CLI logged i
 const db = createClient(`https://${ref}.supabase.co`, service, { db: { schema: 'garden' }, auth: { persistSession: false } })
 const TYPES = { '.svg': 'image/svg+xml', '.webp': 'image/webp' }
 
+// Storage sometimes answers a brief "Service Unavailable": wait and try again a
+// few times before giving up on a file.
+async function upload(key, body, contentType) {
+  for (let attempt = 1; ; attempt++) {
+    const { error } = await db.storage.from('garden-designs').upload(key, body, { contentType, upsert: true, cacheControl: '31536000' })
+    if (!error) return
+    if (attempt >= 5) throw error
+    console.log(`  ${key.split('/').slice(1).join('/')}: ${error.message}; trying again (${attempt} of 4)`)
+    await new Promise((r) => setTimeout(r, 2000 * attempt))
+  }
+}
+
 let files = 0
 let bytes = 0
 for (const [n, entries] of Object.entries(manifest)) {
   const names = entries.flatMap((e) => [e.file, e.thumb].filter(Boolean))
   for (const name of names) {
     const body = fs.readFileSync(path.join(dir, n, name))
-    const { error } = await db.storage
-      .from('garden-designs')
-      .upload(`${gardenId}/${n}/${name}`, body, { contentType: TYPES[path.extname(name)], upsert: true, cacheControl: '31536000' })
-    if (error) throw new Error(`Site ${n}, ${name}: ${error.message}`)
+    try {
+      await upload(`${gardenId}/${n}/${name}`, body, TYPES[path.extname(name)])
+    } catch (error) {
+      throw new Error(`Site ${n}, ${name}: ${error.message}`)
+    }
     files++
     bytes += body.length
   }
