@@ -1092,12 +1092,16 @@ h1 {
 .month-name {
   margin: 0;
 }
-/* Each month row picks the same month as the ring. */
-.month-row {
+/* Each month in the list picks the same month as the ring: the name and its
+   count on one line, the reason it matters underneath. */
+.month-pick {
   display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 12px;
+  align-items: baseline;
   width: 100%;
   min-height: 44px;
-  padding: 2px 0;
+  padding: 4px 0;
   border: 0;
   background: none;
   color: inherit;
@@ -1105,7 +1109,15 @@ h1 {
   text-align: left;
   cursor: pointer;
 }
-.month-row[aria-pressed='true'] .month-name {
+.month-pick .critical-note {
+  grid-column: 1 / -1;
+}
+.month-count {
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: right;
+}
+.month-pick[aria-pressed='true'] .month-name {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;

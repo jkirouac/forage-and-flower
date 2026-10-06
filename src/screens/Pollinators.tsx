@@ -130,7 +130,7 @@ export default function Pollinators({ userId, month: chosen }: { userId: string;
                 const count =
                   scope === 'ours'
                     ? g || p
-                      ? [g ? `${g} now` : null, p ? `${p} planned` : null].filter(Boolean).join(' · ')
+                      ? [g ? `${g} in flower` : null, p ? `${p} planned` : null].filter(Boolean).join(' · ')
                       : isCritical(m)
                         ? 'Nothing in flower: a gap'
                         : 'Nothing in flower'
@@ -139,12 +139,10 @@ export default function Pollinators({ userId, month: chosen }: { userId: string;
                       : 'Nothing in flower'
                 return (
                   <li key={m} data-critical={isCritical(m) || undefined} aria-current={m === now ? 'date' : undefined}>
-                    <button type="button" className="month-row" aria-pressed={m === month} onClick={() => choose(m)}>
-                      <span className="month-name">
-                        {name}
-                        {why.length > 0 && <span className="critical-note"> · {why.join('; ')}</span>}
-                      </span>
-                      <span className="task-detail">{count}</span>
+                    <button type="button" className="month-pick" aria-pressed={m === month} onClick={() => choose(m)}>
+                      <span className="month-name">{name}</span>
+                      <span className="month-count">{count}</span>
+                      {why.length > 0 && <span className="critical-note">{why.join('; ')}</span>}
                     </button>
                   </li>
                 )
