@@ -22,14 +22,16 @@ export interface SeasonsData {
 function applyEdits(data: SeasonsData, ops: Op[]): SeasonsData {
   let items = data.items
   let plants = data.plants
+  let sites = data.sites
   for (const op of ops) {
     if (op.kind === 'plan-insert' && !items.some((i) => i.id === op.row.id)) items = [...items, op.row as unknown as PlanItem]
     else if (op.kind === 'plan-update') items = items.map((i) => (i.id === op.id ? { ...i, ...op.patch } : i))
     else if (op.kind === 'plan-delete') items = items.filter((i) => i.id !== op.id)
     else if (op.kind === 'plant-insert' && !plants.some((p) => p.id === op.row.id)) plants = [...plants, op.row as unknown as Plant]
     else if (op.kind === 'plan-clear') items = items.map((i) => (op.ids.includes(i.id) ? { ...i, cleared_at: op.at } : i))
+    else if (op.kind === 'site-update') sites = sites.map((s) => (s.id === op.id ? { ...s, ...op.patch } : s))
   }
-  return { ...data, items, plants }
+  return { ...data, items, plants, sites }
 }
 
 export async function loadSeasons(userId: string): Promise<SeasonsData> {
@@ -85,6 +87,7 @@ export function useSeasons(userId: string) {
   useLoadWhenBack(reload)
   const gardenId = data?.gardenId
   useLiveTable('plan_items', gardenId, reload)
+  useLiveTable('sites', gardenId, reload)
 
   const change = useCallback((op: Op) => {
     setData((prev) => (prev ? applyEdits(prev, [op]) : prev))
@@ -140,5 +143,8 @@ export function useSeasons(userId: string) {
     [change, data?.plants],
   )
 
-  return { data, error, pending, reload, update, remove, add, addPlant, clear }
+  // What's growing at a site, from the Plants map.
+  const setExisting = useCallback((siteId: string, existing: string[]) => change({ kind: 'site-update', id: siteId, patch: { existing } }), [change])
+
+  return { data, error, pending, reload, update, remove, add, addPlant, clear, setExisting }
 }

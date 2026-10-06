@@ -1,7 +1,19 @@
 import { useState, type KeyboardEvent } from 'react'
 import { useCatalogue } from '../lib/catalogue'
 import { useSeasons } from '../lib/seasons'
-import { bloomByMonth, criticalLabels, gaps, isCritical, monthPlants, noBloomMonths, ourPlants, rankPicks } from '../lib/pollinators'
+import {
+  bloomByMonth,
+  criticalLabels,
+  gaps,
+  isCritical,
+  monthPlants,
+  noBloomMonths,
+  ourPlants,
+  rankPicks,
+  withMarks,
+  type BloomMark,
+} from '../lib/pollinators'
+import PlantPicker from './PlantPicker'
 import { statusLine, type PlanItem } from '../lib/plan'
 import type { FullPlant } from '../lib/plants'
 import { MONTHS } from '../lib/season'
@@ -14,16 +26,20 @@ type Scope = 'ours' | 'all'
 // "Our garden" counts every plant of ours that flowers, in the ground and planned
 // apart; "All pollinator plants" is the ranking.
 export default function Pollinators({ userId, month: chosen }: { userId: string; month: number | null }) {
-  const { data, error, reload } = useCatalogue(userId)
+  const { data, error, reload, markBloom, unmarkBloom, addPlant } = useCatalogue(userId)
   const seasons = useSeasons(userId)
   const [scope, setScope] = useState<Scope>('ours')
   const [onlyMissing, setOnlyMissing] = useState(false)
-  const [now] = useState(() => new Date().getMonth() + 1)
+  const [today] = useState(() => new Date())
+  const now = today.getMonth() + 1
+  const year = today.getFullYear()
   const month = chosen ?? now
 
   const items = seasons.data?.items ?? []
-  const plants = data?.plants ?? []
-  const ours = ourPlants(plants, items, data?.plantings ?? [], seasons.data?.sites ?? [])
+  // Flowering months widened by what's been seen in flower here.
+  const marks = data?.bloomMarks ?? []
+  const plants = withMarks(data?.plants ?? [], marks)
+  const ours = ourPlants(plants, items, data?.plantings ?? [], seasons.data?.sites ?? [], marks)
   const ranked = data ? rankPicks(plants) : []
   const haveIds = new Set([...ours.inGround, ...ours.planned].map((p) => p.id))
 
@@ -88,7 +104,20 @@ export default function Pollinators({ userId, month: chosen }: { userId: string;
             </p>
           </section>
 
-          <MonthPanel month={month} ours={ours} ranked={ranked} items={items} />
+          <MonthPanel
+            month={month}
+            ours={ours}
+            ranked={ranked}
+            items={items}
+            marks={marks}
+            members={data.members}
+            canMark={month === now}
+            plants={plants}
+            onMark={(id) => markBloom(id, year, now)}
+            onUnmark={unmarkBloom}
+            addPlant={addPlant}
+            year={year}
+          />
 
           <section className="block">
             <h2 className="label">Month by month</h2>
@@ -144,17 +173,35 @@ export default function Pollinators({ userId, month: chosen }: { userId: string;
 }
 
 // The month you tapped: what of ours is in flower, what's planned that flowers
-// then, and, in a critical month or a gap, ranked plants that would help.
+// then, and, in a critical month or a gap, ranked plants that would help. In the
+// current month, anything else seen in flower can be marked; a mark shows who
+// made it and can be taken back.
 function MonthPanel({
   month,
   ours,
   ranked,
   items,
+  marks,
+  members,
+  canMark,
+  plants,
+  onMark,
+  onUnmark,
+  addPlant,
+  year,
 }: {
   month: number
   ours: { inGround: FullPlant[]; planned: FullPlant[] }
   ranked: FullPlant[]
   items: PlanItem[]
+  marks: BloomMark[]
+  members: Record<string, string>
+  canMark: boolean
+  plants: FullPlant[]
+  onMark: (plantId: string) => void
+  onUnmark: (markId: string) => void
+  addPlant: (common: string, kind: string) => string
+  year: number
 }) {
   const { inFlower, planned, couldAdd } = monthPlants(month, ours, ranked)
   const critical = isCritical(month)
@@ -166,6 +213,10 @@ function MonthPanel({
     const i = items.find((x) => x.plant_id === p.id && (x.status === 'to buy' || x.status === 'bought'))
     return i ? statusLine(i.status, i.season) : null
   }
+  // This month's mark for a plant, this year first.
+  const markFor = (plantId: string) =>
+    marks.find((m) => m.plant_id === plantId && m.month === month && m.year === year) ??
+    marks.find((m) => m.plant_id === plantId && m.month === month)
 
   return (
     <section className="site-panel month-panel" data-critical={critical || undefined} aria-live="polite">
@@ -173,37 +224,68 @@ function MonthPanel({
         <h2>{MONTHS[month - 1]}</h2>
         {why.length > 0 && <p className="group-sub">{why.join('; ')}</p>}
       </div>
-      {gap ? (
+      {gap && (
         <p>
           Nothing of ours flowers in {MONTHS[month - 1]}
           {critical ? ', when pollinators need it.' : '.'}
         </p>
-      ) : (
-        <>
-          <PlantLine label="In flower now" plants={inFlower} empty="Nothing of ours in flower yet." />
-          {planned.length > 0 && (
-            <div>
-              <p className="label">Planned</p>
-              <ul className="month-plants">
-                {planned.map((p) => (
-                  <li key={p.id}>
-                    <a href={`#plant/${encodeURIComponent(p.id)}`} className="plant-name">
-                      {p.common}
-                    </a>
-                    {plan(p) && <span className="task-detail"> · {plan(p)}</span>}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </>
+      )}
+      {inFlower.length > 0 && (
+        <div>
+          <p className="label">In flower now</p>
+          <ul className="grow-chips">
+            {inFlower.map((p) => {
+              const mark = markFor(p.id)
+              const mine = mark && canMark && mark.year === year
+              return (
+                <li key={p.id} className="grow-chip" data-known>
+                  <a href={`#plant/${encodeURIComponent(p.id)}`}>{p.common}</a>
+                  {mark && (
+                    <span className="mark-by" title="Seen in flower here">
+                      {members[mark.marked_by ?? ''] ?? '?'}
+                    </span>
+                  )}
+                  {mine && (
+                    <button type="button" className="grow-remove" aria-label={`Not in flower: ${p.common}`} onClick={() => onUnmark(mark.id)}>
+                      ✕
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+      {planned.length > 0 && (
+        <div>
+          <p className="label">Planned</p>
+          <ul className="month-plants">
+            {planned.map((p) => (
+              <li key={p.id}>
+                <a href={`#plant/${encodeURIComponent(p.id)}`} className="plant-name">
+                  {p.common}
+                </a>
+                {plan(p) && <span className="task-detail"> · {plan(p)}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {canMark && (
+        <PlantPicker
+          label="Something else in flower?"
+          plants={plants}
+          exclude={new Set(inFlower.map((p) => p.id))}
+          addPlant={addPlant}
+          onPick={(p) => onMark(p.id)}
+        />
       )}
       {(critical || gap) && suggest.length > 0 && <PlantLine label="Could add" plants={suggest} empty="" />}
       {unknown.length > 0 && (
         <p className="task-detail">
           {unknown.length === 1 ? '1 of our plants has' : `${unknown.length} of our plants have`} no flowering months in our notes yet, so{' '}
           {unknown.length === 1 ? "it isn't" : "they aren't"} counted here: {listWords(unknown.slice(0, 4).map((p) => p.common))}
-          {unknown.length > 4 ? ' and more' : ''}.
+          {unknown.length > 4 ? ' and more' : ''}. If one is in flower, mark it above.
         </p>
       )}
     </section>

@@ -18,7 +18,8 @@ import {
 import { shortDate } from '../lib/season'
 import { Icon } from './Icons'
 import YardMap from './YardMap'
-import { siteContents, type YardSite } from '../lib/yard'
+import PlantPicker from './PlantPicker'
+import { matchPlant, siteContents, type YardSite } from '../lib/yard'
 
 const FILTER_KEY = 'ff-plant-filters'
 
@@ -47,7 +48,7 @@ function saveFilters(keys: string[]) {
 // match). Each plant opens its page. Above it all, the yard map: choosing a site
 // narrows the lists to that site and shows its conditions and rules.
 export default function Plants({ userId, site: siteNumber }: { userId: string; site: number | null }) {
-  const { data, error, reload } = useCatalogue(userId)
+  const { data, error, reload, addPlant } = useCatalogue(userId)
   const seasons = useSeasons(userId)
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<string[]>(readFilters)
@@ -86,7 +87,11 @@ export default function Plants({ userId, site: siteNumber }: { userId: string; s
     ? { inGround: [], onLists: [], others: [] }
     : here
       ? { inGround: here.inGround.filter(keep), onLists: here.onLists.filter(keep), others: [] as FullPlant[] }
-      : plantsByPlace(all.filter(keep), items, data.plantings)
+      : plantsByPlace(all.filter(keep), items, [
+          ...data.plantings,
+          // Seen in flower here, so it grows here.
+          ...data.bloomMarks.map((m) => ({ plant_id: m.plant_id, action: 'seen', happened_on: m.marked_at.slice(0, 10) })),
+        ])
   const total = inGround.length + onLists.length + others.length
   const filtering = selected.length > 0 || q.trim() !== ''
 
@@ -114,7 +119,17 @@ export default function Plants({ userId, site: siteNumber }: { userId: string; s
       {data?.gardenId && (
         <>
           {map && sites.length > 0 && <YardMap map={map} sites={sites} counts={counts} selected={site?.number ?? null} onSelect={chooseSite} />}
-          {site && here && <SitePanel ref={panel} site={site} notesOnly={here.notesOnly} rules={here.rules} onClear={() => chooseSite(null)} />}
+          {site && here && (
+            <SitePanel
+              ref={panel}
+              site={site}
+              plants={all}
+              rules={here.rules}
+              onClear={() => chooseSite(null)}
+              onExisting={(names) => seasons.setExisting(site.id, names)}
+              addPlant={addPlant}
+            />
+          )}
 
           <label className="field">
             Find a plant
@@ -202,21 +217,30 @@ export default function Plants({ userId, site: siteNumber }: { userId: string; s
 }
 
 // The chosen site: its name and conditions, what to do and not use there, and
-// anything the notes say grows there that isn't in our plant list.
+// what's growing there (from the notes, and added here). Names the plant list
+// doesn't know yet can be added to it, so they count everywhere, the ring included.
 function SitePanel({
   ref,
   site,
-  notesOnly,
+  plants,
   rules,
   onClear,
+  onExisting,
+  addPlant,
 }: {
   ref: Ref<HTMLElement>
   site: YardSite
-  notesOnly: string[]
+  plants: FullPlant[]
   rules: Rule[]
   onClear: () => void
+  onExisting: (names: string[]) => void
+  addPlant: (common: string, kind: string) => string
 }) {
   const { doLines, dontLines } = summarizeRules(rules)
+  const existing = site.existing ?? []
+  // A name the plant list doesn't know: tapping it starts the picker with that name.
+  const [seed, setSeed] = useState('')
+  const known = existing.map((name) => ({ name, id: matchPlant(name, plants) }))
   return (
     <section ref={ref} className="site-panel" style={{ '--c': `var(--site-${site.number}, var(--lichen))` } as CSSProperties} aria-live="polite">
       <div className="site-head">
@@ -252,13 +276,43 @@ function SitePanel({
           )}
         </div>
       )}
-      {notesOnly.length > 0 && (
-        <p>
-          <span className="label">Also growing here</span>
-          <br />
-          {notesOnly.join(', ')}
-        </p>
-      )}
+      <div className="block">
+        <h3 className="label">Growing here</h3>
+        {known.length === 0 ? (
+          <p className="empty">Nothing recorded here yet.</p>
+        ) : (
+          <ul className="grow-chips">
+            {known.map(({ name, id }) => (
+              <li key={name} className="grow-chip" data-known={id ? true : undefined}>
+                {id ? (
+                  <a href={`#plant/${encodeURIComponent(id)}`}>{name}</a>
+                ) : (
+                  <button type="button" className="grow-unknown" onClick={() => setSeed(name)} aria-label={`Add ${name} to our plants`}>
+                    {name} <span aria-hidden="true">+</span>
+                  </button>
+                )}
+                <button type="button" className="grow-remove" aria-label={`Not growing here: ${name}`} onClick={() => onExisting(existing.filter((n) => n !== name))}>
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {known.some((k) => !k.id) && <p className="task-detail">Names with + aren't in our plant list yet. Tap one to add it, so it counts everywhere.</p>}
+        <PlantPicker
+          key={seed}
+          seed={seed}
+          label="Add a plant growing here"
+          plants={plants}
+          exclude={new Set(known.map((k) => k.id).filter((x): x is string => !!x))}
+          addPlant={addPlant}
+          onPick={(p) => {
+            // A new plant for a name from the notes takes that name's place.
+            onExisting([...existing.filter((n) => n !== seed && n !== p.common), p.common])
+            setSeed('')
+          }}
+        />
+      </div>
     </section>
   )
 }

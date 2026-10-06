@@ -5,6 +5,7 @@ import {
   groupByNursery,
   groupByPlant,
   groupStatus,
+  KINDS,
   nextStatus,
   qtyLabel,
   seasonLabel,
@@ -21,7 +22,6 @@ import { clearSummary } from '../lib/clear'
 import { ClearBar, ShowCleared } from './ClearBar'
 
 const STATUS_LABEL: Record<Status, string> = { 'to buy': 'To buy', bought: 'Bought', planted: 'Planted', skipped: 'Skipped' }
-const KINDS = ['perennial flower', 'tree or shrub', 'edible', 'bulb', 'fern', 'annual from seed', 'ornamental']
 
 // Shopping (the Seasons lists): fall and spring, grouped by nursery so each group is
 // a trip, one card per plant with its sites inside. Tick plants off as you buy them,

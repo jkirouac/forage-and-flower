@@ -1598,3 +1598,137 @@ h1 {
   justify-content: space-between;
   gap: 10px;
 }
+
+/* Plant picker (PlantPicker.tsx): find a plant, or add a new one. */
+.picker {
+  display: grid;
+  gap: 6px;
+}
+.picker-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 400 1rem var(--body);
+}
+.picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.picker-option {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.picker-option:hover,
+.picker-option:focus-visible {
+  background: var(--accent-soft);
+}
+.picker-new {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+.picker-new-row {
+  display: flex;
+  gap: 8px;
+}
+.picker-new-row select {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 400 1rem var(--body);
+}
+
+/* Growing here (site panel) and In flower now (month panel): plants as chips. */
+.grow-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.grow-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 4px 0 12px;
+  border: 1px dashed var(--muted);
+  border-radius: 999px;
+  background: var(--bg);
+}
+.grow-chip[data-known] {
+  border-style: solid;
+  border-color: var(--line);
+}
+.grow-chip a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.grow-unknown {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+.grow-remove {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.mark-by {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--lichen);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.grow-chip:not(:has(.grow-remove)) {
+  padding-right: 10px;
+}
+
+/* Plant page: seen in flower here, and the In flower now toggle. */
+.month-bar .cell.on.seen,
+.key-swatch.seen {
+  background: color-mix(in srgb, var(--bloom) 45%, transparent);
+  outline: 1px dashed var(--bloom);
+  outline-offset: -1px;
+}
+.bloom-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}

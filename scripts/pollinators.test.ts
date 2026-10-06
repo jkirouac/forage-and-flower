@@ -1,7 +1,7 @@
 // node --test scripts/pollinators.test.ts
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { bloomByMonth, criticalLabels, gaps, isCritical, monthFromHash, monthPlants, noBloomMonths, ourPlants, rankPicks } from '../src/lib/pollinators.ts'
+import { bloomByMonth, criticalLabels, gaps, isCritical, markedMonths, monthFromHash, monthPlants, noBloomMonths, ourPlants, rankPicks, withMarks } from '../src/lib/pollinators.ts'
 import type { FullPlant } from '../src/lib/plants.ts'
 
 const plant = (common: string, extra: Partial<FullPlant> = {}): FullPlant => ({
@@ -90,4 +90,20 @@ test('the chosen month lives in the address', () => {
   assert.equal(monthFromHash('#pollinators/month/12'), 12)
   assert.equal(monthFromHash('#pollinators/month/13'), null)
   assert.equal(monthFromHash('#pollinators'), null)
+})
+
+test('a mark widens a plant\'s flowering months and makes it ours', () => {
+  const bee = plant('Bee Balm', { bloom_months: [6, 7, 8] })
+  const sun = plant('Sunflower')
+  const marks = [
+    { plant_id: 'Bee Balm', month: 10 },
+    { plant_id: 'Sunflower', month: 10 },
+    { plant_id: 'Sunflower', month: 9 },
+  ]
+  const seen = withMarks([bee, sun], marks)
+  assert.deepEqual(seen.map((p) => p.bloom_months), [[6, 7, 8, 10], [9, 10]])
+  assert.deepEqual(markedMonths('Sunflower', marks), [9, 10])
+  const ours = ourPlants(seen, [], [], [], marks)
+  assert.deepEqual(ours.inGround.map((p) => p.id), ['Bee Balm', 'Sunflower'])
+  assert.deepEqual(monthPlants(10, ours, []).inFlower.map((p) => p.id), ['Bee Balm', 'Sunflower'])
 })

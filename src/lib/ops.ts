@@ -28,8 +28,18 @@ export type Op =
   | { kind: 'task-delete'; id: string }
   | { kind: 'note-insert'; row: Record<string, unknown> & { id: string } }
   | { kind: 'note-delete'; id: string }
+  // What's growing at a site (sites.existing), edited on the Plants map.
+  | { kind: 'site-update'; id: string; patch: Record<string, unknown> }
+  // "In flower" marks for a plant in a month.
+  | { kind: 'bloom-insert'; row: Record<string, unknown> & { id: string } }
+  | { kind: 'bloom-delete'; id: string }
 
-const INSERT_FOR = { 'planting-delete': 'planting-insert', 'task-delete': 'task-insert', 'note-delete': 'note-insert' } as const
+const INSERT_FOR = {
+  'planting-delete': 'planting-insert',
+  'task-delete': 'task-insert',
+  'note-delete': 'note-insert',
+  'bloom-delete': 'bloom-insert',
+} as const
 
 // Folds a new change into what's waiting, so the outbox never sends work that a
 // later change undoes: a second tick on the same task and month replaces the
@@ -56,9 +66,17 @@ export function addOp(ops: Op[], op: Op): Op[] {
       )
       return wasNew ? rest : [...rest, op]
     }
+    case 'site-update': {
+      // Later edits to the same site win; one update goes out.
+      const earlier = ops.find((o) => o.kind === 'site-update' && o.id === op.id)
+      if (earlier && earlier.kind === 'site-update')
+        return [...ops.filter((o) => o !== earlier), { ...op, patch: { ...earlier.patch, ...op.patch } }]
+      return [...ops, op]
+    }
     case 'planting-delete':
     case 'task-delete':
-    case 'note-delete': {
+    case 'note-delete':
+    case 'bloom-delete': {
       const insert = INSERT_FOR[op.kind]
       const isIt = (o: Op) => o.kind === insert && 'row' in o && o.row.id === op.id
       // A task's ticks waiting to be sent go with it.

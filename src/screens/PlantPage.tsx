@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useCatalogue, type NewPlanting } from '../lib/catalogue'
 import { useSeasons } from '../lib/seasons'
 import { useGarden } from '../lib/garden'
+import { markedMonths } from '../lib/pollinators'
 import { buildMonth, SECTIONS } from '../lib/month'
 import { qtyLabel, seasonLabel, type Nursery, type PlanItem, type Site } from '../lib/plan'
 import {
@@ -91,8 +92,12 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
   const rows = [
     { label: 'Planting', months: plantingMonths(plant, garden.garden?.tasks ?? []), tone: 'plant' },
     { label: 'Flowering', months: plant.bloom_months, tone: 'bloom' },
+    // Months someone saw it in flower in this garden, any year.
+    { label: 'Seen here', months: markedMonths(plant.id, catalogue.data.bloomMarks), tone: 'seen' },
     { label: 'Pollinators', months: plant.pollinator_months, tone: 'pollen' },
   ].filter((r) => r.months.length > 0)
+  const thisYear = now.getFullYear()
+  const mark = catalogue.data.bloomMarks.find((b) => b.plant_id === plant.id && b.year === thisYear && b.month === month)
 
   function save(entry: NewPlanting, item: PlanItem | null) {
     catalogue.record(entry)
@@ -187,7 +192,7 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
             <p className="bar-key">
               {rows.map((r) => (
                 <span key={r.tone}>
-                  <span className={`key-swatch ${r.tone}`} /> {r.label === 'Planting' ? 'Planting time' : r.label === 'Flowering' ? 'In flower' : 'Pollinators use it'}
+                  <span className={`key-swatch ${r.tone}`} /> {r.label === 'Planting' ? 'Planting time' : r.label === 'Flowering' ? 'In flower' : r.label === 'Seen here' ? 'Seen in flower here' : 'Pollinators use it'}
                 </span>
               ))}
               <span>
@@ -198,6 +203,21 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
         ) : (
           <p className="empty">We don't have its planting or flowering months yet.</p>
         )}
+        <div className="bloom-toggle">
+          <button
+            type="button"
+            className="choice"
+            aria-pressed={!!mark}
+            onClick={() => (mark ? catalogue.unmarkBloom(mark.id) : catalogue.markBloom(plant.id, thisYear, month))}
+          >
+            {mark ? '✓ In flower now' : 'In flower now?'}
+          </button>
+          {mark && (
+            <span className="task-detail">
+              Marked by {catalogue.data.members[mark.marked_by ?? ''] ?? 'someone'} on {shortDate(new Date(mark.marked_at).toLocaleDateString('en-CA'))}.
+            </span>
+          )}
+        </div>
       </section>
 
       {rules.length > 0 && <RulesSummary rules={rules} siteNumber={(id) => siteById(id)?.number} />}

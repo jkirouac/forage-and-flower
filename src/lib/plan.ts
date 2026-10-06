@@ -133,6 +133,9 @@ export function groupByNursery(items: PlanItem[], nurseries: Nursery[], plants: 
   })
 }
 
+// The kinds a plant added in the app can be.
+export const KINDS = ['perennial flower', 'tree or shrub', 'edible', 'bulb', 'fern', 'annual from seed', 'ornamental']
+
 // A catalogue key for a plant added in the app: "Bee Balm 'Jacob Cline'" -> "bee-balm-jacob-cline".
 export function plantKey(common: string, taken: Set<string>) {
   const base =

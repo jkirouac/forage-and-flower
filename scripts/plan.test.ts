@@ -173,3 +173,17 @@ test('status in words for a plant row', () => {
   assert.equal(statusLine('to buy', 'fall-2026'), 'To buy for fall 2026')
   assert.equal(statusLine('bought', 'fall-2026'), 'Bought, not planted yet')
 })
+
+test('outbox: edits to one site join into one update; an unsent in-flower mark taken back is forgotten', () => {
+  let ops = addOp([], { kind: 'site-update', id: 's1', patch: { existing: ['Sage'] } })
+  ops = addOp(ops, { kind: 'site-update', id: 's1', patch: { existing: ['Sage', 'Thyme'] } })
+  ops = addOp(ops, { kind: 'site-update', id: 's2', patch: { existing: ['Camas'] } })
+  assert.deepEqual(ops, [
+    { kind: 'site-update', id: 's1', patch: { existing: ['Sage', 'Thyme'] } },
+    { kind: 'site-update', id: 's2', patch: { existing: ['Camas'] } },
+  ])
+  let marks = addOp([], { kind: 'bloom-insert', row: { id: 'm1', plant_id: 'p', year: 2026, month: 10 } })
+  marks = addOp(marks, { kind: 'bloom-delete', id: 'm1' })
+  assert.deepEqual(marks, [])
+  assert.deepEqual(addOp([], { kind: 'bloom-delete', id: 'sent' }), [{ kind: 'bloom-delete', id: 'sent' }])
+})

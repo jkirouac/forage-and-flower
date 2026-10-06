@@ -50,16 +50,20 @@ export function gaps(plants: FullPlant[]) {
 // ---------- our garden, month by month (tap a month on the ring) ----------
 
 // Ours, split the way the Plants tab splits it: in the ground (planted, logged and
-// not since died, or named in a site's notes as already growing there) and planned
+// not since died, named in a site's notes as already growing there, or marked in
+// flower here) and planned
 // (to buy or bought, not in the ground). Every plant counts, ranked or not.
 export function ourPlants(
   plants: FullPlant[],
   items: { plant_id: string; status: string }[],
   plantings: { plant_id: string; action: string; happened_on: string }[],
   sites: { existing?: string[] }[],
+  marks: { plant_id: string }[] = [],
 ) {
   const { inGround, onLists } = plantsByPlace(plants, items, plantings)
   const ground = new Set(inGround.map((p) => p.id))
+  // Seen in flower here, so it grows here.
+  for (const m of marks) ground.add(m.plant_id)
   for (const s of sites) for (const name of s.existing ?? []) {
     const id = matchPlant(name, plants)
     if (id) ground.add(id)
@@ -93,4 +97,36 @@ export function monthFromHash(hash: string): number | null {
   const m = hash.replace(/^#/, '').match(/^pollinators\/month\/(\d{1,2})$/)
   const n = m ? Number(m[1]) : null
   return n && n >= 1 && n <= 12 ? n : null
+}
+
+// ---------- in-flower marks: what's actually flowering in this garden ----------
+
+export interface BloomMark {
+  id: string
+  plant_id: string
+  year: number
+  month: number
+  marked_by: string | null
+  marked_at: string
+}
+
+// Plants with their flowering months widened by this garden's marks (any year), so
+// the ring learns the garden's real bloom times on top of the notes' calendar.
+export function withMarks(plants: FullPlant[], marks: Pick<BloomMark, 'plant_id' | 'month'>[]): FullPlant[] {
+  const seen = new Map<string, Set<number>>()
+  for (const m of marks) {
+    if (!seen.has(m.plant_id)) seen.set(m.plant_id, new Set())
+    seen.get(m.plant_id)!.add(m.month)
+  }
+  return plants.map((p) => {
+    const extra = seen.get(p.id)
+    if (!extra) return p
+    const months = [...new Set([...p.bloom_months, ...extra])].sort((a, b) => a - b)
+    return months.length === p.bloom_months.length ? p : { ...p, bloom_months: months }
+  })
+}
+
+// Months this garden has seen a plant in flower (any year), for the plant page's bar.
+export function markedMonths(plantId: string, marks: Pick<BloomMark, 'plant_id' | 'month'>[]) {
+  return [...new Set(marks.filter((m) => m.plant_id === plantId).map((m) => m.month))].sort((a, b) => a - b)
 }
