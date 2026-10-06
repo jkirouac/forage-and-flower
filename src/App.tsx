@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Month from './screens/Month'
-import Seasons from './screens/Seasons'
+import GardenTab from './screens/Garden'
 import Plants from './screens/Plants'
 import PlantPage from './screens/PlantPage'
 import Pollinators from './screens/Pollinators'
@@ -10,33 +10,38 @@ import SignIn from './screens/SignIn'
 import NewPassword from './screens/NewPassword'
 import { siteFromHash } from './lib/yard'
 import { monthFromHash } from './lib/pollinators'
+import { todoFromHash, type TodoView } from './lib/month'
 import { configured, hasEmailLink, readEmailLink, setRecoveryPending, useRecoveryPending, useSession, type Arrival } from './lib/supabase'
 
 type Screen = NavKind | 'settings' | 'plant'
 interface Route {
   screen: Screen
   plantId?: string
-  site?: number // a site chosen on the Plants map (#plants/site/4)
+  site?: number // a site chosen on the Garden map (#garden/site/4)
+  view?: TodoView // the chip chosen on To do (#todo/buy)
   month?: number // a month chosen on the Pollinators ring (#pollinators/month/12)
 }
 
 const TABS: { id: NavKind; label: string }[] = [
-  { id: 'month', label: 'Month' },
-  { id: 'seasons', label: 'Shopping' },
+  { id: 'todo', label: 'To do' },
+  { id: 'garden', label: 'Garden' },
   { id: 'plants', label: 'Plants' },
   { id: 'pollinators', label: 'Pollinators' },
 ]
 
-// The screen lives in the address (#seasons, #plant/<id>), so Android's back button
-// works between tabs and back from a plant page.
+// The screen lives in the address (#todo/buy, #garden/site/4, #plant/<id>), so
+// Android's back button works between tabs and back from a plant page. Old
+// addresses still land: #month and #seasons on To do, #plants/site/4 on Garden.
 function routeFromHash(): Route {
   const id = location.hash.slice(1)
   if (id.startsWith('plant/')) return { screen: 'plant', plantId: decodeURIComponent(id.slice(6)) }
   const site = siteFromHash(id)
-  if (site !== null) return { screen: 'plants', site }
+  if (site !== null) return { screen: 'garden', site }
   const month = monthFromHash(id)
   if (month !== null) return { screen: 'pollinators', month }
-  return { screen: id === 'settings' || TABS.some((t) => t.id === id) ? (id as Screen) : 'month' }
+  const view = todoFromHash(id)
+  if (view !== null) return { screen: 'todo', view }
+  return { screen: id === 'settings' || TABS.some((t) => t.id === id) ? (id as Screen) : 'todo', view: 'all' }
 }
 
 export default function App() {
@@ -70,7 +75,7 @@ export default function App() {
 
 function Garden({ userId }: { userId: string }) {
   const [route, setRoute] = useState<Route>(routeFromHash)
-  const { screen, plantId, site, month } = route
+  const { screen, plantId, site, month, view } = route
 
   useEffect(() => {
     const onHash = () => setRoute(routeFromHash())
@@ -85,9 +90,9 @@ function Garden({ userId }: { userId: string }) {
   return (
     <div className="app">
       <main className="screen">
-        {screen === 'month' && <Month userId={userId} />}
-        {screen === 'seasons' && <Seasons userId={userId} />}
-        {screen === 'plants' && <Plants userId={userId} site={site ?? null} />}
+        {screen === 'todo' && <Month userId={userId} view={view ?? 'all'} />}
+        {screen === 'garden' && <GardenTab userId={userId} site={site ?? null} />}
+        {screen === 'plants' && <Plants userId={userId} />}
         {screen === 'plant' && plantId && <PlantPage key={plantId} userId={userId} plantId={plantId} />}
         {screen === 'pollinators' && <Pollinators userId={userId} month={month ?? null} />}
         {screen === 'settings' && <Settings />}

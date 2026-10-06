@@ -106,8 +106,8 @@ export function siteLabel(site: YardSite, count: number) {
   return `Site ${site.number}, ${site.name}, ${count === 0 ? 'no plants yet' : count === 1 ? '1 plant' : `${count} plants`}`
 }
 
-// #plants/site/4 -> 4
+// #garden/site/4 -> 4 (and the old #plants/site/4)
 export function siteFromHash(hash: string): number | null {
-  const m = hash.replace(/^#/, '').match(/^plants\/site\/(\d+)$/)
+  const m = hash.replace(/^#/, '').match(/^(?:garden|plants)\/site\/(\d+)$/)
   return m ? Number(m[1]) : null
 }

@@ -1,6 +1,6 @@
 // Line icons for the tab bar, drawn on a 24px grid in the current text colour.
 
-export type NavKind = 'month' | 'seasons' | 'plants' | 'pollinators'
+export type NavKind = 'todo' | 'garden' | 'plants' | 'pollinators'
 
 export function NavIcon({ kind }: { kind: NavKind }) {
   const common = {
@@ -15,7 +15,7 @@ export function NavIcon({ kind }: { kind: NavKind }) {
     'aria-hidden': true,
   }
   switch (kind) {
-    case 'month':
+    case 'todo':
       // A checklist page.
       return (
         <svg {...common}>
@@ -23,13 +23,14 @@ export function NavIcon({ kind }: { kind: NavKind }) {
           <path d="M8 9l1.5 1.5L12 8M8 15l1.5 1.5L12 14M14.5 9.5H17M14.5 15.5H17" />
         </svg>
       )
-    case 'seasons':
-      // Half the year in leaf, half bare: fall and spring.
+    case 'garden':
+      // A plot plan: a house, a bed and a tree.
       return (
         <svg {...common}>
-          <circle cx="12" cy="12" r="8" />
-          <path d="M12 4v16" />
-          <path d="M12 9c2.5-.5 4 .5 4.5 2.5-2.5.5-4-.5-4.5-2.5zM12 14c2-.3 3.2.6 3.6 2.2-2 .3-3.2-.6-3.6-2.2z" />
+          <rect x="3.5" y="3.5" width="17" height="17" rx="1.5" />
+          <path d="M7 3.5v5h6v-5" />
+          <path d="M6.5 13.5c2 0 3.5 1 4 3.5-2 .3-3.8-.7-4-3.5z" />
+          <circle cx="16" cy="15" r="2.6" />
         </svg>
       )
     case 'plants':

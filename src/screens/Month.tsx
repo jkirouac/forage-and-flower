@@ -16,17 +16,19 @@ import {
   type Note,
   type Outcome,
   type Section,
+  type TodoView,
 } from '../lib/month'
-import { buyingSeason, groupByNursery, groupByPlant, qtyLabel, seasonLabel, type Group, type Plant, type PlanItem, type Site } from '../lib/plan'
+import { buyingSeason, buySummary, currentSeason, seasonLabel, shoppingClearable } from '../lib/plan'
+import { ShoppingList } from './Seasons'
 import { linkPlantNames, type FullPlant } from '../lib/plants'
-import { MONTHS, monthHeading, shortDate } from '../lib/season'
+import { MONTHS, monthHeading } from '../lib/season'
 import { clearSummary } from '../lib/clear'
 import { ClearBar, ShowCleared } from './ClearBar'
 import VoiceNote from './VoiceNote'
 import type { DraftItem } from '../lib/notes'
 
 const LABELS: Record<Section, string> = { do: 'Do', plant: 'Plant', buy: 'Buy' }
-type Filter = Section | 'all' | 'notes'
+type Filter = TodoView
 const FILTERS: Filter[] = ['all', ...SECTIONS, 'notes']
 
 const EMPTY: Record<Section, string> = {
@@ -38,13 +40,15 @@ const EMPTY: Record<Section, string> = {
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const MAX_MONTHS = 12
 
-// This month and the next few, each under its own header with Do / Plant / Buy.
-// Tap a card to tick it done; press and hold a card, then drag it onto another
+// To do: this month and the next few, each under its own header with Do / Plant /
+// Buy. Tap a card to tick it done; press and hold a card, then drag it onto another
 // month to move it there ("From Oct"). The small arrow opens its note. Plant names
-// in a task are links to their pages. Buy comes from the Shopping list for this
-// time of year, one card per nursery. The mic button speaks a note: Claude tidies
-// it into one-off tasks and notes for a month (VoiceNote).
-export default function Month({ userId }: { userId: string }) {
+// in a task are links to their pages. In All, a buying month shows one line for
+// its shopping list; the Buy chip opens the list itself (fall or spring), with any
+// one-off errands above it. The mic button speaks a note: Claude tidies it into
+// one-off tasks and notes for a month (VoiceNote). The chosen chip is in the
+// address (#todo/buy), so back works and other screens can link to it.
+export default function Month({ userId, view }: { userId: string; view: TodoView }) {
   // The date when the screen opened; reopening the app picks up a new month.
   const [now] = useState(() => new Date())
   const year = now.getFullYear()
@@ -53,7 +57,12 @@ export default function Month({ userId }: { userId: string }) {
   const { garden, error, pending, reload, tick, clear, addItems, removeTask, removeNote } = useGarden(userId, year)
   const seasons = useSeasons(userId)
   const catalogue = useCatalogue(userId)
-  const [filter, setFilter] = useState<Filter>('all')
+  const filter = view
+  const setFilter = (f: Filter) => {
+    window.location.assign(f === 'all' ? '#todo' : `#todo/${f}`)
+  }
+  // The shopping list being looked at in Buy: the one being shopped for now, else the next.
+  const [season, setSeason] = useState(() => buyingSeason(year, month) ?? currentSeason(now))
   const [showCleared, setShowCleared] = useState(false)
   const [count, setCount] = useState(3)
   const drag = useDragToMonth()
@@ -100,7 +109,7 @@ export default function Month({ userId }: { userId: string }) {
   const lists = garden ? months.map((m) => ({ ...m, list: buildMonth(garden.tasks, garden.checks, m.year, m.month) })) : []
   const plants = catalogue.data?.plants ?? []
 
-  // Each season's shopping goes under the first month on screen in its window.
+  // Each season's shopping line goes under the first month on screen in its window.
   const buyHome = new Map<string, number>()
   for (const m of months) {
     const s = buyingSeason(m.year, m.month)
@@ -110,6 +119,15 @@ export default function Month({ userId }: { userId: string }) {
   const everything = lists.flatMap((l) => SECTIONS.flatMap((s) => l.list[s]).map((item) => ({ item, year: l.year, month: l.month })))
   const clearable = everything.filter((x) => x.item.check?.outcome === 'done' && !x.item.check.cleared_at)
   const clearedCount = everything.filter((x) => x.item.check?.cleared_at).length
+
+  // In Buy, Clear works on the shopping list being looked at.
+  const shopClearable = filter === 'buy' ? shoppingClearable(seasons.data?.items ?? [], season) : []
+  // Errands in Buy: one-off Buy tasks still open this month and next.
+  const errands = lists.slice(0, 2).flatMap((l, i) =>
+    shownItems(l.list.buy, i === 0, false)
+      .filter((item) => !item.check)
+      .map((item) => ({ item, l })),
+  )
 
   function clearAll() {
     const byMonth = new Map<string, { year: number; month: number; ids: string[] }>()
@@ -167,34 +185,61 @@ export default function Month({ userId }: { userId: string }) {
             ))}
           </div>
 
+          {filter === 'buy' ? (
+            <>
+              {errands.length > 0 && (
+                <section className="block">
+                  <h2 className="label">Also to pick up</h2>
+                  <ul className="tasks">
+                    {errands.map(({ item, l }) => (
+                      <TaskRow
+                        key={item.task.id}
+                        item={item}
+                        initials={undefined}
+                        nextName={MONTHS[nextMonth(l.year, l.month).month - 1]}
+                        plants={plants}
+                        dragging={drag.taskId === item.task.id}
+                        months={months}
+                        origin={pushOrigin(garden.checks, item.task.id, l.year, l.month)}
+                        at={{ year: l.year, month: l.month }}
+                        onSet={(outcome) => tick(item.task.id, l.year, l.month, outcome)}
+                        onRemove={item.task.year != null ? () => removeTask(item.task.id) : undefined}
+                        onMove={(origin, to) => moveTask(item.task.id, origin, { year: l.year, month: l.month }, to)}
+                        onHint={(text) => setNotice({ text })}
+                        drag={drag}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              )}
+              <ShoppingList shop={seasons} season={season} onSeason={setSeason} />
+            </>
+          ) : (
+            <>
           {lists.map((l, index) => {
             const isNow = index === 0
             const nextOnScreen = index < lists.length - 1
             const next = nextMonth(l.year, l.month)
-            const season = buyingSeason(l.year, l.month)
+            const shopping = buyingSeason(l.year, l.month)
             const parts = SECTIONS.filter((s) => filter === 'all' || filter === s).map((section) => {
               const items = shownItems(l.list[section], nextOnScreen, showCleared)
-              const buy = section === 'buy' && season !== null
+              // The season's shopping line sits under the first month in its window.
+              const buy = section === 'buy' && shopping !== null && buyHome.get(shopping) === l.month
               // Later months only show the sections that have something in them.
               if (!isNow && items.length === 0 && !buy) return null
               return (
                 <div key={section} className="block">
                   <h3 className="label">{LABELS[section]}</h3>
-                  {buy &&
-                    (buyHome.get(season) === l.month ? (
-                      <BuyCards
-                        season={season}
-                        items={seasons.data?.items ?? null}
-                        group={(list) => groupByNursery(list, seasons.data?.nurseries ?? [], seasons.data?.plants ?? [])}
-                        plants={seasons.data?.plants ?? []}
-                        sites={seasons.data?.sites ?? []}
-                        onSet={(id, status) => seasons.update(id, { status })}
-                      />
-                    ) : (
-                      <p className="empty">
-                        {seasonLabel(season)} shopping is under {MONTHS[buyHome.get(season)! - 1]}.
-                      </p>
-                    ))}
+                  {buy && (
+                    <BuyLine
+                      season={shopping}
+                      summary={seasons.data ? buySummary(seasons.data.items, shopping) : null}
+                      onOpen={() => {
+                        setSeason(shopping)
+                        setFilter('buy')
+                      }}
+                    />
+                  )}
                   {items.length > 0 ? (
                     <ul className="tasks">
                       {items.map((item) => (
@@ -267,6 +312,8 @@ export default function Month({ userId }: { userId: string }) {
             </button>
           )}
           <ShowCleared count={clearedCount} shown={showCleared} onToggle={() => setShowCleared(!showCleared)} />
+            </>
+          )}
           {drag.ghost && (
             <div className="drag-ghost" style={{ top: drag.ghost.top, left: drag.ghost.left, width: drag.ghost.width }} aria-hidden="true">
               {drag.ghost.title}
@@ -299,13 +346,23 @@ export default function Month({ userId }: { userId: string }) {
                 </svg>
               </button>
             )}
-            <ClearBar
-              summary={clearSummary(
-                clearable.map((x) => x.item.check?.done_by ?? null),
-                userId,
-              )}
-              onClear={clearAll}
-            />
+            {filter === 'buy' ? (
+              <ClearBar
+                summary={clearSummary(
+                  shopClearable.map((i) => i.status_by),
+                  userId,
+                )}
+                onClear={() => seasons.clear(shopClearable.map((i) => i.id))}
+              />
+            ) : (
+              <ClearBar
+                summary={clearSummary(
+                  clearable.map((x) => x.item.check?.done_by ?? null),
+                  userId,
+                )}
+                onClear={clearAll}
+              />
+            )}
           </div>
           {speaking && <VoiceNote today={{ year, month }} plants={plants} onSave={saveNote} onClose={() => setSpeaking(false)} />}
         </>
@@ -684,119 +741,27 @@ function NoteRow({ note, initials, plants, onRemove }: { note: Note; initials: s
   )
 }
 
-// Buy: the season's list, one card per nursery, each opening to its plants.
-function BuyCards({
+// Buy in All: the season's shopping list as one line that opens it in Buy.
+function BuyLine({
   season,
-  items,
-  group,
-  plants,
-  sites,
-  onSet,
+  summary,
+  onOpen,
 }: {
   season: string
-  items: PlanItem[] | null // null while the lists load
-  group: (items: PlanItem[]) => Group[]
-  plants: Plant[]
-  sites: Site[]
-  onSet: (id: string, status: 'to buy' | 'bought') => void
+  summary: { total: number; toBuy: number; nurseries: number } | null
+  onOpen: () => void
 }) {
-  if (!items) return <p className="empty">Loading the {seasonLabel(season)} list…</p>
-  const list = items.filter((i) => i.season === season && !i.cleared_at && (i.status === 'to buy' || i.status === 'bought'))
-  if (list.length === 0) return <p className="empty">Nothing left to buy on the {seasonLabel(season)} list.</p>
+  if (!summary) return <p className="empty">Loading the {seasonLabel(season)} list…</p>
+  if (summary.total === 0) return <p className="empty">Nothing on the {seasonLabel(season)} list.</p>
+  const text =
+    summary.toBuy === 0
+      ? `Everything on the ${seasonLabel(season)} list is bought.`
+      : `${seasonLabel(season)} list: ${summary.toBuy} to buy at ${summary.nurseries} ${summary.nurseries === 1 ? 'nursery' : 'nurseries'}`
   return (
-    <ul className="tasks">
-      {group(list).map((g) => (
-        <BuyCard
-          key={g.nursery?.id ?? 'none'}
-          group={g}
-          plants={plants}
-          siteNumber={(id) => sites.find((s) => s.id === id)?.number}
-          onSet={onSet}
-        />
-      ))}
-    </ul>
+    <button type="button" className="buy-line" onClick={onOpen}>
+      <span>{text}</span>
+      <span aria-hidden="true">›</span>
+    </button>
   )
 }
 
-function BuyCard({
-  group,
-  plants,
-  siteNumber,
-  onSet,
-}: {
-  group: Group
-  plants: Plant[]
-  siteNumber: (id: string | null) => number | undefined
-  onSet: (id: string, status: 'to buy' | 'bought') => void
-}) {
-  const [open, setOpen] = useState(false)
-  const name = group.nursery?.name ?? 'No nursery yet'
-  // Counted by plant, not by site: Great Camas for five sites is one thing to buy.
-  const byPlant = groupByPlant(group.items, plants, siteNumber)
-  const toBuy = byPlant.filter((g) => g.counts['to buy'] > 0).length
-  const bought = byPlant.length - toBuy
-  const where = group.nursery
-    ? [group.nursery.location, group.nursery.last_checked ? `checked ${shortDate(group.nursery.last_checked)}` : null]
-        .filter(Boolean)
-        .join(' · ')
-    : ''
-
-  return (
-    <li className="task buy-card" data-state={toBuy === 0 ? 'done' : 'open'} data-open={open || undefined}>
-      <div className="task-face">
-        {/* Ticks itself once everything is bought; tapping it opens the card. */}
-        <button type="button" className="task-check" tabIndex={-1} aria-hidden="true" onClick={() => setOpen(!open)}>
-          {toBuy === 0 && <Tick />}
-        </button>
-        <button type="button" className="task-open" aria-expanded={open} onClick={() => setOpen(!open)}>
-          <span className="task-title">{name}</span>
-          <span className="task-meta">
-            <span>{toBuy ? `${toBuy} to buy` : 'All bought'}</span>
-            {bought > 0 && toBuy > 0 && <span>{bought} bought</span>}
-            {where && <span>{where}</span>}
-          </span>
-        </button>
-        <Chevron open={open} label={`${open ? 'Close' : 'Open'}: ${name}`} onClick={() => setOpen(!open)} />
-      </div>
-      {open && (
-        <div className="task-more">
-          <ul className="buy-plants">
-            {byPlant.map((g) => {
-              // One line per plant: its circle buys every site at once.
-              const left = g.items.filter((i) => i.status === 'to buy')
-              const got = left.length === 0
-              const n = g.items.length
-              const where =
-                n > 1 ? `${n} sites${!got && left.length < n ? ` · ${n - left.length} of ${n} bought` : ''}` : siteLine(siteNumber(g.items[0].site_id))
-              const name = plants.find((p) => p.id === g.plant_id)?.common ?? 'Unknown plant'
-              const label = `${name} × ${qtyLabel(g.qtyMin, g.qtyMax)}${where ? ` · ${where}` : ''}`
-              return (
-                <li key={g.plant_id} data-state={got ? 'done' : 'open'}>
-                  <button
-                    type="button"
-                    className="task-check"
-                    role="checkbox"
-                    aria-checked={got}
-                    aria-label={got ? `Not bought: ${label}` : `Bought: ${label}`}
-                    onClick={() => {
-                      if (got) g.items.forEach((i) => onSet(i.id, 'to buy'))
-                      else left.forEach((i) => onSet(i.id, 'bought'))
-                    }}
-                  >
-                    {got && <Tick />}
-                  </button>
-                  <span className="buy-plant">{label}</span>
-                </li>
-              )
-            })}
-          </ul>
-          <a className="task-link" href="#seasons">
-            Open in Shopping
-          </a>
-        </div>
-      )}
-    </li>
-  )
-}
-
-const siteLine = (n: number | undefined) => (n ? `Site ${n}` : '')

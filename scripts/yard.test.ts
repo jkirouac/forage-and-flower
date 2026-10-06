@@ -57,6 +57,7 @@ test('tap targets say what the site is and how much is in it', () => {
 })
 
 test('the chosen site lives in the address, so back works', () => {
+  assert.equal(siteFromHash('#garden/site/4'), 4)
   assert.equal(siteFromHash('#plants/site/4'), 4)
   assert.equal(siteFromHash('#plants'), null)
   assert.equal(siteFromHash('#plants/site/x'), null)

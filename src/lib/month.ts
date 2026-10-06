@@ -110,6 +110,19 @@ export function upcomingMonths(year: number, month: number, count: number) {
   return out
 }
 
+// To do's chips: All, Do, Plant, Buy (the shopping list) and Notes.
+export type TodoView = 'all' | Section | 'notes'
+
+// #todo -> all, #todo/buy -> buy. Old addresses still land: #month is To do,
+// #seasons (the old Shopping tab) is To do › Buy. Anything else is null.
+export function todoFromHash(hash: string): TodoView | null {
+  const id = hash.replace(/^#/, '')
+  if (id === 'todo' || id === 'month' || id === '') return 'all'
+  if (id === 'seasons') return 'buy'
+  const m = id.match(/^todo\/(do|plant|buy|notes)$/)
+  return m ? (m[1] as TodoView) : null
+}
+
 // What a month's section shows. A pushed task leaves its month once the next month
 // is on screen, since it shows there ("From Oct"); cleared ticks stay hidden unless
 // asked for.

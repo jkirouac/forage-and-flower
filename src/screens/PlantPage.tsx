@@ -225,7 +225,7 @@ export default function PlantPage({ userId, plantId }: { userId: string; plantId
       <section className="block">
         <h2 className="label">Shopping and planting</h2>
         {items.length === 0 ? (
-          <p className="empty">Not on a shopping list yet. You can add it in Shopping.</p>
+          <p className="empty">Not on a shopping list yet. You can add it in To do › Buy.</p>
         ) : (
           <ul className="list-lines">
             {listGroups(items).map((g) => (
@@ -294,7 +294,7 @@ function MonthBar({ rows, current }: { rows: { label: string; months: number[]; 
   )
 }
 
-// One line per season and nursery, as on Shopping: a plant going to five sites is one line.
+// One line per season and nursery, as in To do › Buy: a plant going to five sites is one line.
 function listGroups(items: PlanItem[]) {
   const groups = new Map<string, PlanItem[]>()
   for (const i of items) {
@@ -327,7 +327,7 @@ function ListLine({ items, sites, nursery }: { items: PlanItem[]; sites: Site[];
     statuses.size === 1 ? STATUS_LINE[items[0].status] : `${got} of ${items.length} bought`
   return (
     <li>
-      <a href="#seasons">
+      <a href="#todo/buy">
         <strong>{seasonLabel(items[0].season)}:</strong> buy {qtyLabel(min, max)}
         {forSites}
         {from}. <span className="list-status">{status[0].toUpperCase() + status.slice(1)}.</span>

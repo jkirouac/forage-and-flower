@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useSeasons, type NewItem } from '../lib/seasons'
 import {
-  currentSeason,
   groupByNursery,
   groupByPlant,
   groupStatus,
@@ -18,178 +17,149 @@ import {
   type Site,
   type Status,
 } from '../lib/plan'
-import { clearSummary } from '../lib/clear'
-import { ClearBar, ShowCleared } from './ClearBar'
+import { ShowCleared } from './ClearBar'
 
 const STATUS_LABEL: Record<Status, string> = { 'to buy': 'To buy', bought: 'Bought', planted: 'Planted', skipped: 'Skipped' }
 
-// Shopping (the Seasons lists): fall and spring, grouped by nursery so each group is
-// a trip, one card per plant with its sites inside. Tick plants off as you buy them,
-// then "Clear N checked off" hides them (they stay bought, ready to mark planted).
-// Tap a plant to change how many, where, or from which nursery, or to remove it.
-export default function Seasons({ userId }: { userId: string }) {
-  const { data, error, pending, reload, update, remove, add, addPlant, clear } = useSeasons(userId)
+// The shopping list, under To do › Buy: fall and spring, grouped by nursery so each
+// group is a trip, one card per plant with its sites inside. Tick plants off as you
+// buy them; To do's "Clear N checked off" hides them (they stay bought, ready to
+// mark planted). Tap a plant to change how many, where, or from which nursery, or
+// to remove it. The season is chosen by To do, so its Clear bar knows which list.
+export function ShoppingList({
+  shop,
+  season,
+  onSeason,
+}: {
+  shop: ReturnType<typeof useSeasons>
+  season: string
+  onSeason: (season: string) => void
+}) {
+  const { data, update, remove, add, addPlant } = shop
   const [showCleared, setShowCleared] = useState(false)
-  const [season, setSeason] = useState(() => currentSeason())
   const [onlyToBuy, setOnlyToBuy] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
   const [openGroup, setOpenGroup] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
 
-  const items = data?.items.filter((i) => i.season === season) ?? []
+  if (!data?.gardenId) return null
+  const items = data.items.filter((i) => i.season === season)
   const shown = items.filter((i) => (!onlyToBuy || i.status === 'to buy') && (showCleared || !i.cleared_at))
-  const clearable = items.filter((i) => i.status !== 'to buy' && !i.cleared_at)
   const clearedCount = items.filter((i) => i.cleared_at).length
   // Counted by plant, like the cards: Great Camas for five sites is one to buy.
   const counts: Record<Status, number> = { 'to buy': 0, bought: 0, planted: 0, skipped: 0 }
-  for (const g of data ? groupByNursery(items, data.nurseries, data.plants) : [])
-    for (const pg of groupByPlant(g.items, data?.plants ?? [])) {
-      const s = groupStatus(pg)
-      counts[s === 'mixed' ? (pg.counts['to buy'] > 0 ? 'to buy' : 'bought') : s]++
+  for (const g of groupByNursery(items, data.nurseries, data.plants))
+    for (const pg of groupByPlant(g.items, data.plants)) {
+      const st = groupStatus(pg)
+      counts[st === 'mixed' ? (pg.counts['to buy'] > 0 ? 'to buy' : 'bought') : st]++
     }
-  const groups = data ? groupByNursery(shown, data.nurseries, data.plants) : []
-  const siteNumber = (id: string | null) => data?.sites.find((s) => s.id === id)?.number
-  const summary = STATUSES.filter((s) => counts[s] > 0)
-    .map((s) => `${counts[s]} ${s}`)
+  const groups = groupByNursery(shown, data.nurseries, data.plants)
+  const siteNumber = (id: string | null) => data.sites.find((x) => x.id === id)?.number
+  const summary = STATUSES.filter((st) => counts[st] > 0)
+    .map((st) => `${counts[st]} ${st}`)
     .join(' · ')
 
   return (
     <>
-      <header className="page-head">
-        <p className="kicker">To buy and to plant</p>
-        <h1>Shopping</h1>
-      </header>
-      <hr className="rule" />
-
-      {error && !data && (
-        <section className="block">
-          <p className="notice notice-error">{error}</p>
-          <button type="button" className="choice" onClick={reload}>
-            Try again
+      <div className="choices" role="radiogroup" aria-label="Season">
+        {seasonOptions(data.items).map((x) => (
+          <button
+            key={x}
+            type="button"
+            role="radio"
+            aria-checked={season === x}
+            className="choice"
+            onClick={() => {
+              onSeason(x)
+              setOpen(null)
+              setAdding(false)
+            }}
+          >
+            {seasonLabel(x)}
           </button>
+        ))}
+      </div>
+
+      <div className="head-row">
+        <p className="sync-note">{summary || 'Nothing on this list yet.'}</p>
+        {items.length > 0 && (
+          <button type="button" className="text-button" aria-pressed={onlyToBuy} onClick={() => setOnlyToBuy(!onlyToBuy)}>
+            {onlyToBuy ? 'Show everything' : 'Only what’s to buy'}
+          </button>
+        )}
+      </div>
+
+      {groups.map((g) => (
+        <section key={g.nursery?.id ?? 'none'} className="block">
+          <div>
+            <h2 className="label">{g.nursery?.name ?? 'No nursery yet'}</h2>
+            {g.nursery && <p className="group-sub">{nurseryLine(g.nursery)}</p>}
+          </div>
+          <ul className="plan-list">
+            {groupByPlant(g.items, data.plants, siteNumber).map((pg) => {
+              const row = (item: PlanItem, asSite: boolean) => (
+                <PlanRow
+                  key={item.id}
+                  item={item}
+                  plant={data.plants.find((p) => p.id === item.plant_id)}
+                  site={data.sites.find((x) => x.id === item.site_id)}
+                  sites={data.sites}
+                  nurseries={data.nurseries}
+                  asSite={asSite}
+                  open={open === item.id}
+                  onToggle={() => setOpen(open === item.id ? null : item.id)}
+                  onChange={(patch) => update(item.id, patch)}
+                  onRemove={() => {
+                    remove(item.id)
+                    setOpen(null)
+                  }}
+                  seasonName={seasonLabel(season)}
+                />
+              )
+              if (pg.items.length === 1) return row(pg.items[0], false)
+              const key = `${g.nursery?.id ?? 'none'}:${pg.plant_id}`
+              return (
+                <PlantGroupRow
+                  key={key}
+                  group={pg}
+                  plant={data.plants.find((p) => p.id === pg.plant_id)}
+                  open={openGroup === key}
+                  onToggle={() => setOpenGroup(openGroup === key ? null : key)}
+                  onStatus={(id, status) => update(id, { status })}
+                >
+                  {pg.items.map((item) => row(item, true))}
+                </PlantGroupRow>
+              )
+            })}
+          </ul>
         </section>
-      )}
+      ))}
 
-      {data && !data.gardenId && (
-        <p className="empty">This account isn't part of a garden yet. Ask whoever runs your garden to add you.</p>
-      )}
+      {onlyToBuy && items.length > 0 && shown.length === 0 && <p className="empty">Everything on this list is bought.</p>}
+      <ShowCleared count={clearedCount} shown={showCleared} onToggle={() => setShowCleared(!showCleared)} />
 
-      {(data?.fromPhone || pending > 0) && (
-        <p className="sync-note" role="status">
-          {data?.fromPhone ? 'No connection: showing what this phone last saw. ' : ''}
-          {pending > 0 ? `${pending} ${pending === 1 ? 'change' : 'changes'} will be sent when you have signal.` : ''}
-        </p>
-      )}
-
-      {data?.gardenId && (
-        <>
-          <div className="choices" role="radiogroup" aria-label="Season">
-            {seasonOptions(data.items).map((s) => (
-              <button
-                key={s}
-                type="button"
-                role="radio"
-                aria-checked={season === s}
-                className="choice"
-                onClick={() => {
-                  setSeason(s)
-                  setOpen(null)
-                  setAdding(false)
-                }}
-              >
-                {seasonLabel(s)}
-              </button>
-            ))}
-          </div>
-
-          <div className="head-row">
-            <p className="sync-note">{summary || 'Nothing on this list yet.'}</p>
-            {items.length > 0 && (
-              <button type="button" className="text-button" aria-pressed={onlyToBuy} onClick={() => setOnlyToBuy(!onlyToBuy)}>
-                {onlyToBuy ? 'Show everything' : 'Only what’s to buy'}
-              </button>
-            )}
-          </div>
-
-          {groups.map((g) => (
-            <section key={g.nursery?.id ?? 'none'} className="block">
-              <div>
-                <h2 className="label">{g.nursery?.name ?? 'No nursery yet'}</h2>
-                {g.nursery && <p className="group-sub">{nurseryLine(g.nursery)}</p>}
-              </div>
-              <ul className="plan-list">
-                {groupByPlant(g.items, data.plants, siteNumber).map((pg) => {
-                  const row = (item: PlanItem, asSite: boolean) => (
-                    <PlanRow
-                      key={item.id}
-                      item={item}
-                      plant={data.plants.find((p) => p.id === item.plant_id)}
-                      site={data.sites.find((s) => s.id === item.site_id)}
-                      sites={data.sites}
-                      nurseries={data.nurseries}
-                      asSite={asSite}
-                      open={open === item.id}
-                      onToggle={() => setOpen(open === item.id ? null : item.id)}
-                      onChange={(patch) => update(item.id, patch)}
-                      onRemove={() => {
-                        remove(item.id)
-                        setOpen(null)
-                      }}
-                      seasonName={seasonLabel(season)}
-                    />
-                  )
-                  if (pg.items.length === 1) return row(pg.items[0], false)
-                  const key = `${g.nursery?.id ?? 'none'}:${pg.plant_id}`
-                  return (
-                    <PlantGroupRow
-                      key={key}
-                      group={pg}
-                      plant={data.plants.find((p) => p.id === pg.plant_id)}
-                      open={openGroup === key}
-                      onToggle={() => setOpenGroup(openGroup === key ? null : key)}
-                      onStatus={(id, status) => update(id, { status })}
-                    >
-                      {pg.items.map((item) => row(item, true))}
-                    </PlantGroupRow>
-                  )
-                })}
-              </ul>
-            </section>
-          ))}
-
-          {onlyToBuy && items.length > 0 && shown.length === 0 && <p className="empty">Everything on this list is bought.</p>}
-          <ShowCleared count={clearedCount} shown={showCleared} onToggle={() => setShowCleared(!showCleared)} />
-
-          {adding ? (
-            <AddForm
-              season={season}
-              plants={data.plants}
-              sites={data.sites}
-              nurseries={data.nurseries}
-              onAdd={(item, newPlant) => {
-                const plantId = newPlant ? addPlant(newPlant.common, newPlant.kind) : item.plant_id
-                add({ ...item, plant_id: plantId })
-                setAdding(false)
-              }}
-              onCancel={() => setAdding(false)}
-            />
-          ) : (
-            <button type="button" className="choice" onClick={() => setAdding(true)}>
-              Add a plant to {seasonLabel(season)}
-            </button>
-          )}
-          <ClearBar
-            summary={clearSummary(
-              clearable.map((i) => i.status_by),
-              userId,
-            )}
-            onClear={() => clear(clearable.map((i) => i.id))}
-          />
-        </>
+      {adding ? (
+        <AddForm
+          season={season}
+          plants={data.plants}
+          sites={data.sites}
+          nurseries={data.nurseries}
+          onAdd={(item, newPlant) => {
+            const plantId = newPlant ? addPlant(newPlant.common, newPlant.kind) : item.plant_id
+            add({ ...item, plant_id: plantId })
+            setAdding(false)
+          }}
+          onCancel={() => setAdding(false)}
+        />
+      ) : (
+        <button type="button" className="choice" onClick={() => setAdding(true)}>
+          Add a plant to {seasonLabel(season)}
+        </button>
       )}
     </>
   )
 }
+
 
 function nurseryLine(n: Nursery) {
   const checked = n.last_checked

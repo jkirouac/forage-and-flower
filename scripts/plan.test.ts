@@ -15,6 +15,8 @@ import {
   groupByPlant,
   groupStatus,
   statusLine,
+  buySummary,
+  shoppingClearable,
   type PlanItem,
 } from '../src/lib/plan.ts'
 import { addOp, type Op } from '../src/lib/ops.ts'
@@ -186,4 +188,19 @@ test('outbox: edits to one site join into one update; an unsent in-flower mark t
   marks = addOp(marks, { kind: 'bloom-delete', id: 'm1' })
   assert.deepEqual(marks, [])
   assert.deepEqual(addOp([], { kind: 'bloom-delete', id: 'sent' }), [{ kind: 'bloom-delete', id: 'sent' }])
+})
+
+test('the one line for a season in To do counts plants still to buy and their nurseries', () => {
+  const it = (id: string, plant_id: string, status: string, nursery_id: string | null, extra = {}) =>
+    ({ id, garden_id: 'g', plant_id, site_id: null, season: 'fall-2026', status, qty_min: 1, qty_max: 1, nursery_id, spot: null, notes: null, cleared_at: null, status_by: null, ...extra }) as PlanItem
+  const items = [
+    it('1', 'camas', 'to buy', 'n1'),
+    it('2', 'camas', 'to buy', 'n1', { site_id: 's2' }),
+    it('3', 'aster', 'to buy', 'n2'),
+    it('4', 'yarrow', 'bought', 'n2'),
+    it('5', 'sage', 'planted', null),
+    it('6', 'fern', 'to buy', 'n3', { season: 'spring-2027' }),
+  ]
+  assert.deepEqual(buySummary(items, 'fall-2026'), { total: 3, toBuy: 2, nurseries: 2 })
+  assert.deepEqual(shoppingClearable(items, 'fall-2026').map((i) => i.id), ['4', '5'])
 })

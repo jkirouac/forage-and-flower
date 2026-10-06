@@ -1,7 +1,7 @@
 // node --test scripts/month.test.ts
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMonth, openCount, previousMonth, nextMonth, upcomingMonths, shownItems, pushOrigin, moveTicks, notesFor, type Check, type Task } from '../src/lib/month.ts'
+import { buildMonth, openCount, previousMonth, nextMonth, upcomingMonths, shownItems, pushOrigin, moveTicks, notesFor, todoFromHash, type Check, type Task } from '../src/lib/month.ts'
 
 const task = (id: string, extra: Partial<Task> = {}): Task => ({
   id,
@@ -155,4 +155,14 @@ test("a month's notes, oldest first", () => {
   const note = (id: string, year: number, month: number, at: string) => ({ id, year, month, text: id, spoken: null, written_by: 'u1', written_at: at })
   const notes = [note('b', 2026, 10, '2026-10-05T10:00:00Z'), note('a', 2026, 10, '2026-10-01T10:00:00Z'), note('x', 2027, 10, '2027-10-01T10:00:00Z')]
   assert.deepEqual(notesFor(notes, 2026, 10).map((n) => n.id), ['a', 'b'])
+})
+
+test("To do's chip lives in the address, and old addresses still land", () => {
+  assert.equal(todoFromHash('#todo'), 'all')
+  assert.equal(todoFromHash('#todo/buy'), 'buy')
+  assert.equal(todoFromHash('#todo/notes'), 'notes')
+  assert.equal(todoFromHash('#month'), 'all')
+  assert.equal(todoFromHash('#seasons'), 'buy')
+  assert.equal(todoFromHash('#todo/weeds'), null)
+  assert.equal(todoFromHash('#plants'), null)
 })

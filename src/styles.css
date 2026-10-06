@@ -1744,3 +1744,26 @@ h1 {
   align-items: center;
   gap: 10px;
 }
+
+/* To do › All: a season's shopping list as one line that opens Buy. */
+.buy-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.buy-line span:last-child {
+  color: var(--accent);
+  font-size: 1.4rem;
+  line-height: 1;
+}

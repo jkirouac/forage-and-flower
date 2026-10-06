@@ -159,6 +159,25 @@ export function buyingSeason(year: number, month: number): string | null {
   return null
 }
 
+// The one line for a season's shopping on To do › All: how many plants are still
+// to buy and at how many nurseries. Counted by plant per nursery, like the cards
+// in Buy (Great Camas for five sites is one thing to buy).
+export function buySummary(items: PlanItem[], season: string) {
+  const list = items.filter((i) => i.season === season && !i.cleared_at && (i.status === 'to buy' || i.status === 'bought'))
+  const card = (i: PlanItem) => `${i.nursery_id ?? ''}:${i.plant_id}`
+  const toBuy = list.filter((i) => i.status === 'to buy')
+  return {
+    total: new Set(list.map(card)).size,
+    toBuy: new Set(toBuy.map(card)).size,
+    nurseries: new Set(toBuy.map((i) => i.nursery_id ?? '')).size,
+  }
+}
+
+// Ticked off on this list and not cleared yet: what To do's Clear bar clears in Buy.
+export function shoppingClearable(items: PlanItem[], season: string) {
+  return items.filter((i) => i.season === season && i.status !== 'to buy' && !i.cleared_at)
+}
+
 // One plant at one nursery, across the sites it's going to: "Great Camas × 49 · 5 sites".
 export interface PlantGroup {
   plant_id: string
