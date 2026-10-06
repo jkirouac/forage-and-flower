@@ -258,3 +258,20 @@ test('the notes in plain words', () => {
   )
   assert.equal(plain('Western Bumblebee (COSEWIC Threatened)'), 'Western Bumblebee (threatened in Canada)')
 })
+
+test('a plant gone from one site still counts if it grows at another', () => {
+  const p = (id: string) => ({ ...plant(id), id })
+  const plants = [p('nepeta'), p('camas')]
+  const items = [
+    { plant_id: 'nepeta', status: 'planted', site_id: 's1' },
+    { plant_id: 'nepeta', status: 'planted', site_id: 's5' },
+    { plant_id: 'camas', status: 'planted', site_id: 's1' },
+  ]
+  const log = [
+    { plant_id: 'nepeta', action: 'died', happened_on: '2026-10-05', site_id: 's1' },
+    { plant_id: 'camas', action: 'died', happened_on: '2026-10-05', site_id: null },
+  ]
+  const { inGround, others } = plantsByPlace(plants, items, log)
+  assert.deepEqual(inGround.map((x) => x.id), ['nepeta'])
+  assert.deepEqual(others.map((x) => x.id), ['camas'])
+})

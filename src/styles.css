@@ -1829,7 +1829,7 @@ h1 {
   inset: 0;
   z-index: 30;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
   background: #111;
   color: #f5f1e6;
 }
@@ -1859,27 +1859,31 @@ h1 {
   display: grid;
   place-items: center;
   overflow: hidden;
-  touch-action: pan-y;
+  /* The viewer does its own pinch, drag and double-tap. */
+  touch-action: none;
+  user-select: none;
 }
 .lightbox-stage img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  cursor: zoom-in;
+  transform-origin: center;
+  transition: transform 0.18s ease-out;
+  will-change: transform;
+  -webkit-user-drag: none;
+}
+.lightbox-stage img[data-moving] {
+  transition: none;
 }
 .lightbox-stage img.paper {
   background: #fff;
 }
-.lightbox-stage[data-zoom] {
-  place-items: start;
-  overflow: auto;
-  touch-action: auto;
-}
-.lightbox-stage[data-zoom] img {
-  max-width: none;
-  max-height: none;
-  width: 250%;
-  cursor: zoom-out;
+.lightbox-hint {
+  margin: 0;
+  padding: 4px 16px 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #b9b4a6;
 }
 .lightbox-nav {
   display: flex;
@@ -1890,4 +1894,24 @@ h1 {
   background: #222;
   border-color: #444;
   color: #f5f1e6;
+}
+
+/* A plant row that can be removed from its site (site page). */
+.plant-list li.removable {
+  position: relative;
+}
+.plant-list li.removable .plant-link {
+  padding-right: 48px;
+}
+.plant-remove {
+  position: absolute;
+  top: 8px;
+  right: 6px;
+}
+.remove-ask {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  font-size: 0.95rem;
 }

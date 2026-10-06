@@ -131,6 +131,27 @@ export default function SitePage({ userId, site: siteNumber }: { userId: string;
         items={items}
         plantings={catalogue.data.plantings}
         empty="Nothing recorded here yet. Add what's growing below."
+        removeQuestion={(p) => `${p.common} isn't in ${site.name} any more?`}
+        onRemove={(p) => {
+          // Off the site's own list of what's growing.
+          const names = (site.existing ?? []).filter((n) => matchPlant(n, plants) !== p.id)
+          if (names.length !== (site.existing ?? []).length) seasons.setExisting(site.id, names)
+          // Planted here (log or list): the log records it gone, so the history stays.
+          const planted =
+            catalogue.data!.plantings.some((e) => e.plant_id === p.id && e.site_id === site.id) ||
+            items.some((i) => i.plant_id === p.id && i.site_id === site.id && i.status === 'planted')
+          if (planted)
+            catalogue.record({
+              plant_id: p.id,
+              action: 'died',
+              site_id: site.id,
+              from_site_id: null,
+              plan_item_id: null,
+              quantity: null,
+              happened_on: new Date().toLocaleDateString('en-CA'),
+              notes: `No longer in ${site.name}.`,
+            })
+        }}
       />
       <PlantList
         title="Planned"
@@ -139,6 +160,10 @@ export default function SitePage({ userId, site: siteNumber }: { userId: string;
         items={items}
         plantings={catalogue.data.plantings}
         empty="Nothing on the lists for this site."
+        removeQuestion={(p) => `Take ${p.common} off the list for ${site.name}?`}
+        onRemove={(p) => {
+          for (const i of items) if (i.plant_id === p.id && i.site_id === site.id && (i.status === 'to buy' || i.status === 'bought')) seasons.remove(i.id)
+        }}
       />
       <GrowingHere
         site={site}

@@ -230,17 +230,28 @@ export function summarizeRules(rules: Rule[]) {
 }
 
 // The Plants list: what's in the ground (marked planted, or logged and not since
-// died), what's on a shopping list and not planted yet, and the rest.
+// died), what's on a shopping list and not planted yet, and the rest. Gone is per
+// site: a plant that died or was removed at one site still counts if it grows at
+// another. A "died" with no site means gone everywhere.
 export function plantsByPlace(
   plants: FullPlant[],
-  items: { plant_id: string; status: string }[],
-  log: { plant_id: string; action: string; happened_on: string }[],
+  items: { plant_id: string; status: string; site_id?: string | null }[],
+  log: { plant_id: string; action: string; happened_on: string; site_id?: string | null }[],
 ) {
-  const latest = new Map<string, string>()
-  for (const e of [...log].sort((a, b) => a.happened_on.localeCompare(b.happened_on))) latest.set(e.plant_id, e.action)
+  // Items marked planted come first (they have no date), then the log in order.
+  const entries = [
+    ...items.filter((i) => i.status === 'planted').map((i) => ({ plant_id: i.plant_id, site_id: i.site_id ?? null, action: 'planted', happened_on: '' })),
+    ...[...log].sort((a, b) => a.happened_on.localeCompare(b.happened_on)),
+  ]
+  const latest = new Map<string, Map<string, string>>() // plant -> site -> last action
+  for (const e of entries) {
+    const sites = latest.get(e.plant_id) ?? new Map<string, string>()
+    latest.set(e.plant_id, sites)
+    if (e.action === 'died' && !e.site_id) for (const k of sites.keys()) sites.set(k, 'died')
+    sites.set(e.site_id ?? '', e.action)
+  }
   const inGround = new Set<string>()
-  for (const [id, action] of latest) if (action !== 'died') inGround.add(id)
-  for (const i of items) if (i.status === 'planted' && latest.get(i.plant_id) !== 'died') inGround.add(i.plant_id)
+  for (const [id, sites] of latest) if ([...sites.values()].some((a) => a !== 'died')) inGround.add(id)
   const onLists = new Set(items.filter((i) => i.status === 'to buy' || i.status === 'bought').map((i) => i.plant_id))
   const byName = (a: FullPlant, b: FullPlant) => a.common.localeCompare(b.common)
   return {

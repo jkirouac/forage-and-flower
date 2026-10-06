@@ -177,6 +177,8 @@ export default function Plants({ userId }: { userId: string }) {
   )
 }
 
+// A list of plants, each opening its page. On a site page each row can also be
+// removed from the site: ✕, then a one-line question to confirm.
 export function PlantList({
   title,
   about,
@@ -184,6 +186,8 @@ export function PlantList({
   items,
   plantings,
   empty,
+  onRemove,
+  removeQuestion,
 }: {
   title: string
   about: string
@@ -191,7 +195,10 @@ export function PlantList({
   items: PlanItem[]
   plantings: Planting[]
   empty: string
+  onRemove?: (plant: FullPlant) => void
+  removeQuestion?: (plant: FullPlant) => string
 }) {
+  const [asking, setAsking] = useState<string | null>(null)
   if (plants.length === 0 && !empty) return null
   return (
     <section className="block">
@@ -206,7 +213,7 @@ export function PlantList({
           {plants.map((p) => {
             const feeds = plantTraits(p).pollinators
             return (
-              <li key={p.id}>
+              <li key={p.id} className={onRemove ? 'removable' : undefined}>
                 <a className="plant-link" href={`#plant/${encodeURIComponent(p.id)}`}>
                   <span className="plan-name">{p.common}</span>
                   {p.latin && p.latin !== p.common && <span className="latin plan-latin">{p.latin}</span>}
@@ -219,6 +226,29 @@ export function PlantList({
                     </span>
                   )}
                 </a>
+                {onRemove && (
+                  <button type="button" className="grow-remove plant-remove" aria-label={`Remove ${p.common}`} aria-expanded={asking === p.id} onClick={() => setAsking(asking === p.id ? null : p.id)}>
+                    ✕
+                  </button>
+                )}
+                {onRemove && asking === p.id && (
+                  <p className="remove-ask" role="status">
+                    {removeQuestion?.(p) ?? `Remove ${p.common}?`}{' '}
+                    <button
+                      type="button"
+                      className="text-button inline"
+                      onClick={() => {
+                        onRemove(p)
+                        setAsking(null)
+                      }}
+                    >
+                      Remove
+                    </button>{' '}
+                    <button type="button" className="text-button inline" onClick={() => setAsking(null)}>
+                      Keep
+                    </button>
+                  </p>
+                )}
               </li>
             )
           })}
@@ -232,7 +262,7 @@ export function PlantList({
 function plantLine(p: FullPlant, items: PlanItem[], plantings: Planting[]) {
   const parts = [p.kind[0].toUpperCase() + p.kind.slice(1)]
   if (p.native) parts.push('BC native')
-  if (p.threat_tier) parts.push('Pollinator pick')
+  if (p.threat_tier) parts.push('Pollinator plant')
   const last = plantings.filter((x) => x.plant_id === p.id).sort((a, b) => b.happened_on.localeCompare(a.happened_on))[0]
   const open = items.filter((i) => i.plant_id === p.id && i.status !== 'planted' && i.status !== 'skipped')
   if (last) parts.push(`${last.action[0].toUpperCase() + last.action.slice(1)} ${shortDate(last.happened_on)}`)
