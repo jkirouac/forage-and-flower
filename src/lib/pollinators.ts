@@ -1,8 +1,9 @@
-// Pollinator picks: the ranking from the garden notes, and the year ring that sets
+// Pollinator plants: the ranking from the garden notes, and the year ring that sets
 // what flowers each month against when pollinators most need food. Pure, so it can
 // be tested without a database (scripts/pollinators.test.ts).
 
-import type { FullPlant } from './plants.ts'
+import { plantsByPlace, type FullPlant } from './plants.ts'
+import { matchPlant } from './yard.ts'
 
 // The critical windows from the ranking's rubric ("critical-window forage"):
 // emerging bumblebee queens and early hummingbirds in Feb–Apr, the late season in
@@ -44,4 +45,52 @@ export function bloomByMonth(plants: FullPlant[]) {
 export function gaps(plants: FullPlant[]) {
   const bloom = bloomByMonth(plants)
   return Array.from({ length: 12 }, (_, i) => i + 1).filter((m) => isCritical(m) && bloom[m - 1].length === 0)
+}
+
+// ---------- our garden, month by month (tap a month on the ring) ----------
+
+// Ours, split the way the Plants tab splits it: in the ground (planted, logged and
+// not since died, or named in a site's notes as already growing there) and planned
+// (to buy or bought, not in the ground). Every plant counts, ranked or not.
+export function ourPlants(
+  plants: FullPlant[],
+  items: { plant_id: string; status: string }[],
+  plantings: { plant_id: string; action: string; happened_on: string }[],
+  sites: { existing?: string[] }[],
+) {
+  const { inGround, onLists } = plantsByPlace(plants, items, plantings)
+  const ground = new Set(inGround.map((p) => p.id))
+  for (const s of sites) for (const name of s.existing ?? []) {
+    const id = matchPlant(name, plants)
+    if (id) ground.add(id)
+  }
+  const byName = (a: FullPlant, b: FullPlant) => a.common.localeCompare(b.common)
+  return {
+    inGround: plants.filter((p) => ground.has(p.id)).sort(byName),
+    planned: onLists.filter((p) => !ground.has(p.id)),
+  }
+}
+
+// One month: ours in flower, planned and in flower, and ranked pollinator plants in
+// flower that we neither have nor plan (in ranking order).
+export function monthPlants(month: number, ours: { inGround: FullPlant[]; planned: FullPlant[] }, ranked: FullPlant[]) {
+  const flowers = (p: FullPlant) => p.bloom_months.includes(month)
+  const have = new Set([...ours.inGround, ...ours.planned].map((p) => p.id))
+  return {
+    inFlower: ours.inGround.filter(flowers),
+    planned: ours.planned.filter(flowers),
+    couldAdd: ranked.filter((p) => flowers(p) && !have.has(p.id)),
+  }
+}
+
+// Ours that can't go on the ring yet: no flowering months in the notes.
+export function noBloomMonths(ours: { inGround: FullPlant[]; planned: FullPlant[] }) {
+  return [...ours.inGround, ...ours.planned].filter((p) => p.bloom_months.length === 0)
+}
+
+// #pollinators/month/12 -> 12
+export function monthFromHash(hash: string): number | null {
+  const m = hash.replace(/^#/, '').match(/^pollinators\/month\/(\d{1,2})$/)
+  const n = m ? Number(m[1]) : null
+  return n && n >= 1 && n <= 12 ? n : null
 }

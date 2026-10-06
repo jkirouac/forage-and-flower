@@ -1,7 +1,7 @@
 // node --test scripts/pollinators.test.ts
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { bloomByMonth, criticalLabels, gaps, isCritical, rankPicks } from '../src/lib/pollinators.ts'
+import { bloomByMonth, criticalLabels, gaps, isCritical, monthFromHash, monthPlants, noBloomMonths, ourPlants, rankPicks } from '../src/lib/pollinators.ts'
 import type { FullPlant } from '../src/lib/plants.ts'
 
 const plant = (common: string, extra: Partial<FullPlant> = {}): FullPlant => ({
@@ -51,4 +51,43 @@ test('what flowers each month, and critical months with nothing in flower', () =
   assert.deepEqual(bloom[1].map((p) => p.common), ['Mahonia'])
   assert.deepEqual(bloom[6], [])
   assert.deepEqual(gaps(plants), [1, 4, 11, 12])
+})
+
+test('our garden counts every plant of ours, ranked or not, and keeps in the ground apart from planned', () => {
+  const sage = plant('Sage', { bloom_months: [6, 7] })
+  const camas = plant('Great Camas', { rank: 3, bloom_months: [4, 5] })
+  const hellebore = plant('Hellebore', { rank: 9, threat_tier: 'high', bloom_months: [12, 1, 2] })
+  const heather = plant('Winter Heather', { rank: 5, bloom_months: [12, 1, 2, 3] })
+  const aster = plant('Douglas Aster', { rank: 2, bloom_months: [9, 10] })
+  const plants = [sage, camas, hellebore, heather, aster]
+  const ours = ourPlants(
+    plants,
+    [
+      { plant_id: 'Great Camas', status: 'to buy' },
+      { plant_id: 'Douglas Aster', status: 'planted' },
+    ],
+    [],
+    [{ existing: ['Sage'] }],
+  )
+  assert.deepEqual(ours.inGround.map((p) => p.id), ['Douglas Aster', 'Sage'])
+  assert.deepEqual(ours.planned.map((p) => p.id), ['Great Camas'])
+
+  const ranked = rankPicks(plants)
+  const dec = monthPlants(12, ours, ranked)
+  assert.deepEqual([dec.inFlower, dec.planned].map((l) => l.length), [0, 0])
+  assert.deepEqual(dec.couldAdd.map((p) => p.id), ['Winter Heather', 'Hellebore'])
+  const apr = monthPlants(4, ours, ranked)
+  assert.deepEqual(apr.planned.map((p) => p.id), ['Great Camas'])
+  assert.deepEqual(monthPlants(7, ours, ranked).inFlower.map((p) => p.id), ['Sage'])
+})
+
+test('ours with no flowering months are counted so an empty month is not mistaken for a gap', () => {
+  const ours = { inGround: [plant('Loquat'), plant('Sage', { bloom_months: [6] })], planned: [] }
+  assert.deepEqual(noBloomMonths(ours).map((p) => p.id), ['Loquat'])
+})
+
+test('the chosen month lives in the address', () => {
+  assert.equal(monthFromHash('#pollinators/month/12'), 12)
+  assert.equal(monthFromHash('#pollinators/month/13'), null)
+  assert.equal(monthFromHash('#pollinators'), null)
 })

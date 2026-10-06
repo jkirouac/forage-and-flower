@@ -974,7 +974,7 @@ h1 {
   margin: 0;
 }
 
-/* Pollinator picks: the year ring and the ranking */
+/* Pollinators: the year ring and the ranking */
 .year-ring {
   width: 100%;
   max-width: 300px;
@@ -993,6 +993,28 @@ h1 {
 .ring-bloom {
   fill: var(--bloom);
 }
+/* Planned and in flower: the same colour, lighter, with a dashed edge. */
+.ring-planned {
+  fill: var(--bloom);
+  fill-opacity: 0.3;
+  stroke: var(--bloom);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+.ring-month {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ring-month:focus {
+  outline: none;
+}
+.ring-month:focus-visible .ring-hit {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.ring-hit {
+  fill: transparent;
+}
 .ring-now {
   fill: none;
   stroke: var(--ink);
@@ -1005,12 +1027,16 @@ h1 {
 .ring-label.now {
   fill: var(--ink);
 }
+.ring-label.chosen {
+  fill: var(--ink);
+  font-weight: 800;
+}
 .ring-center {
-  font: 600 18px var(--display);
+  font: 600 16px var(--display);
   fill: var(--ink);
 }
 .ring-center-sub {
-  font: 12px var(--body);
+  font: 11px var(--body);
   fill: var(--muted);
 }
 .ring-key {
@@ -1034,8 +1060,17 @@ h1 {
 .key-swatch.bloom {
   background: var(--bloom);
 }
-.ring-key .key-swatch.bloom {
-  margin-left: 8px;
+.key-swatch.planned {
+  background: color-mix(in srgb, var(--bloom) 30%, transparent);
+  outline: 1px dashed var(--bloom);
+  outline-offset: -1px;
+}
+.key-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 10px;
+  white-space: nowrap;
 }
 .month-list {
   list-style: none;
@@ -1056,6 +1091,36 @@ h1 {
 }
 .month-name {
   margin: 0;
+}
+/* Each month row picks the same month as the ring. */
+.month-row {
+  display: grid;
+  width: 100%;
+  min-height: 44px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.month-row[aria-pressed='true'] .month-name {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.month-panel {
+  --c: var(--line);
+}
+.month-panel[data-critical] {
+  --c: var(--pollen);
+}
+.month-plants {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 4px;
 }
 .critical-note {
   font-size: 0.85rem;
