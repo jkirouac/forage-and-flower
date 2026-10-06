@@ -32,6 +32,8 @@ export interface Site {
   id: string
   number: number
   name: string
+  conditions?: string | null
+  existing?: string[] // plants already growing there, from the garden notes
 }
 
 export interface Nursery {

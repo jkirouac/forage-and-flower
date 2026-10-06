@@ -6,6 +6,7 @@ import { supabase } from './supabase'
 import { queue, readOps, type Op } from './outbox'
 import { CACHES, findGardenId, readJson, useLiveTable, useLoadWhenBack, usePending, writeJson } from './local'
 import { plantKey, type Nursery, type PlanItem, type Plant, type Site } from './plan'
+import type { YardMap } from './yard'
 
 export interface SeasonsData {
   gardenId: string | null
@@ -13,6 +14,7 @@ export interface SeasonsData {
   plants: Plant[]
   sites: Site[]
   nurseries: Nursery[]
+  map: YardMap | null // the yard drawn on Plants, if the garden has one
   fromPhone?: boolean
 }
 
@@ -33,17 +35,18 @@ function applyEdits(data: SeasonsData, ops: Op[]): SeasonsData {
 export async function loadSeasons(userId: string): Promise<SeasonsData> {
   try {
     const gardenId = await findGardenId(userId)
-    if (!gardenId) return { gardenId: null, items: [], plants: [], sites: [], nurseries: [] }
-    const [items, plants, sites, nurseries] = await Promise.all([
+    if (!gardenId) return { gardenId: null, items: [], plants: [], sites: [], nurseries: [], map: null }
+    const [items, plants, sites, nurseries, garden] = await Promise.all([
       supabase
         .from('plan_items')
         .select('id, garden_id, plant_id, site_id, season, status, qty_min, qty_max, nursery_id, spot, notes, cleared_at, status_by')
         .eq('garden_id', gardenId),
       supabase.from('plants').select('id, key, common, latin, kind').order('common'),
-      supabase.from('sites').select('id, number, name').eq('garden_id', gardenId).order('number'),
+      supabase.from('sites').select('id, number, name, conditions, existing').eq('garden_id', gardenId).order('number'),
       supabase.from('nurseries').select('id, name, location, last_checked').order('name'),
+      supabase.from('gardens').select('map').eq('id', gardenId).maybeSingle(),
     ])
-    const error = items.error ?? plants.error ?? sites.error ?? nurseries.error
+    const error = items.error ?? plants.error ?? sites.error ?? nurseries.error ?? garden.error
     if (error) throw error
     const data: SeasonsData = {
       gardenId,
@@ -51,12 +54,14 @@ export async function loadSeasons(userId: string): Promise<SeasonsData> {
       plants: plants.data as Plant[],
       sites: sites.data as Site[],
       nurseries: nurseries.data as Nursery[],
+      map: (garden.data?.map as YardMap | null) ?? null,
     }
     writeJson(CACHES.seasons, { ...data, userId })
     return applyEdits(data, readOps())
   } catch (error) {
     const cached = readJson<(SeasonsData & { userId: string }) | null>(CACHES.seasons, null)
-    if (cached?.userId === userId) return { ...applyEdits(cached, readOps()), fromPhone: true }
+    // A cache from before the yard map has none.
+    if (cached?.userId === userId) return { ...applyEdits({ ...cached, map: cached.map ?? null }, readOps()), fromPhone: true }
     throw error
   }
 }

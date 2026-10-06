@@ -14,6 +14,20 @@
   --bloom: #c2553d; /* salmonberry: flowering months */
   --pollen: #b8860b; /* ochre: pollinator months, year ring */
   --tabbar: #ede7d7;
+  --water: #7ea4a9; /* the swale on the yard map */
+  /* Yard map sites, grouped by kind: sun-baked lean sites in golds and clays (1, 4,
+     7, 9), native woodland in greens (2, 5), fruit and food in plum, grape and soil
+     (3, 6, 10), the side passage in slate (8). */
+  --site-1: #d6b04f;
+  --site-2: #4f8256;
+  --site-3: #94476a;
+  --site-4: #e09a5f;
+  --site-5: #9db766;
+  --site-6: #7559a0;
+  --site-7: #c46f3a;
+  --site-8: #6b8ea8;
+  --site-9: #c97a80;
+  --site-10: #a6825a;
 
   --display: 'Newsreader Variable', Georgia, 'Times New Roman', serif;
   --body: 'Public Sans Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -34,6 +48,17 @@
   --bloom: #e58a72;
   --pollen: #e0b64a;
   --tabbar: #20231d;
+  --water: #4d7277;
+  --site-1: #c9a54a;
+  --site-2: #5c9463;
+  --site-3: #a85a7e;
+  --site-4: #d48f58;
+  --site-5: #93ad5f;
+  --site-6: #8a6db5;
+  --site-7: #b86a3a;
+  --site-8: #7898b0;
+  --site-9: #bd7378;
+  --site-10: #9a7a55;
 
   color-scheme: dark;
 }
@@ -1322,4 +1347,189 @@ h1 {
   border: 0;
   border-left: 3px solid var(--lichen);
   background: none;
+}
+
+/* Yard map on Plants (YardMap.tsx). Drawn in feet; strokes stay hairline at any size. */
+.yard {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.yard-map {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  justify-self: center;
+}
+.yard-map path,
+.yard-map line,
+.yard-map circle,
+.yard-map rect {
+  vector-effect: non-scaling-stroke;
+}
+.yard-hatch {
+  stroke: var(--line);
+  stroke-width: 0.25px;
+  vector-effect: none;
+}
+.yard-street {
+  fill: var(--tabbar);
+}
+.yard-curb {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+.yard-caption {
+  font: 400 1.25px var(--body);
+  letter-spacing: 0.3px;
+  fill: var(--muted);
+}
+.yard-lot {
+  fill: var(--bg);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.yard-hard {
+  fill: var(--line);
+}
+.yard-neighbour {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.yard-site {
+  fill: var(--c);
+  fill-opacity: 0.55;
+  stroke: var(--c);
+  stroke-opacity: 0.9;
+  stroke-width: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.yard-site[data-state='off'] {
+  fill-opacity: 0.18;
+  stroke-opacity: 0.3;
+}
+.yard-site[data-state='on'] {
+  fill-opacity: 0.85;
+  stroke: var(--ink);
+  stroke-opacity: 1;
+  stroke-width: 2.4;
+}
+/* The page's focus ring would be drawn in feet, so a site shows focus by its outline. */
+.yard-site:focus {
+  outline: none;
+}
+.yard-site:focus-visible {
+  stroke: var(--ink);
+  stroke-width: 2.4;
+  stroke-dasharray: 3 2;
+}
+.yard-bed {
+  fill: var(--c);
+  fill-opacity: 0.95;
+  stroke: var(--ink);
+  stroke-opacity: 0.45;
+  stroke-width: 0.8;
+  pointer-events: none;
+}
+.yard-bed[data-state='off'] {
+  fill-opacity: 0.3;
+  stroke-opacity: 0.2;
+}
+.yard-water {
+  fill: var(--water);
+  fill-opacity: 0.8;
+  stroke: var(--water);
+  stroke-width: 0.8;
+  pointer-events: none;
+}
+.yard-water[data-dim] {
+  fill-opacity: 0.45;
+}
+.yard-house {
+  stroke: var(--ink);
+  stroke-width: 1.6;
+}
+.yard-roof {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 0.8;
+}
+.yard-fence {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.2;
+  stroke-dasharray: 1 3;
+}
+.yard-trees {
+  pointer-events: none;
+}
+.yard-trees circle,
+.yard-trees path {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 0.9;
+}
+.yard-tree-name {
+  font: italic 400 1.2px var(--display);
+  fill: var(--muted);
+  pointer-events: none;
+}
+.yard-drain {
+  fill: var(--ink);
+}
+.yard-number {
+  pointer-events: none;
+}
+.yard-number circle {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+.yard-number text {
+  font: 600 1.45px var(--display);
+  fill: var(--ink);
+}
+.yard-number[data-state='on'] circle {
+  fill: var(--ink);
+}
+.yard-number[data-state='on'] text {
+  fill: var(--bg);
+}
+.site-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.site-chips .filter-chip {
+  flex: none;
+}
+
+/* The chosen site, above its plants: a stripe in the site's colour. */
+.site-panel {
+  /* Clear of the tab bar when scrolled into view. */
+  scroll-margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--c, var(--lichen));
+  border-radius: 12px;
+  background: var(--surface);
+}
+.site-panel h2 {
+  margin: 0;
+  font: 600 1.3rem/1.2 var(--display);
+}
+.site-panel p {
+  margin: 0;
+}
+.site-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }

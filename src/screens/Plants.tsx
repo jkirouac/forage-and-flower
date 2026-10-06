@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type Ref } from 'react'
 import { useCatalogue } from '../lib/catalogue'
 import { useSeasons } from '../lib/seasons'
 import { statusLine, type PlanItem } from '../lib/plan'
@@ -10,11 +10,15 @@ import {
   matchesSearch,
   plantsByPlace,
   plantTraits,
+  summarizeRules,
   type FullPlant,
   type Planting,
+  type Rule,
 } from '../lib/plants'
 import { shortDate } from '../lib/season'
 import { Icon } from './Icons'
+import YardMap from './YardMap'
+import { siteContents, type YardSite } from '../lib/yard'
 
 const FILTER_KEY = 'ff-plant-filters'
 
@@ -40,8 +44,9 @@ function saveFilters(keys: string[]) {
 // Plants: what's in the ground, what's on the shopping lists, then the rest of the
 // catalogue. Filter by who a plant feeds and what it's like, with the same chips
 // as plant pages (Mealboard's pattern: rows of chips, any number on, all must
-// match). Each plant opens its page.
-export default function Plants({ userId }: { userId: string }) {
+// match). Each plant opens its page. Above it all, the yard map: choosing a site
+// narrows the lists to that site and shows its conditions and rules.
+export default function Plants({ userId, site: siteNumber }: { userId: string; site: number | null }) {
   const { data, error, reload } = useCatalogue(userId)
   const seasons = useSeasons(userId)
   const [q, setQ] = useState('')
@@ -58,9 +63,30 @@ export default function Plants({ userId }: { userId: string }) {
   const searched = all.filter((p) => matchesSearch(p, q))
   const shownChips = availableFilters(searched, selected)
   const keep = (p: FullPlant) => matchesSearch(p, q) && matchesFilters(p, selected)
-  const { inGround, onLists, others } = data
-    ? plantsByPlace(all.filter(keep), items, data.plantings)
-    : { inGround: [], onLists: [], others: [] }
+
+  // The yard map and the chosen site, if any.
+  const map = seasons.data?.map ?? null
+  const sites: YardSite[] = seasons.data?.sites ?? []
+  const contents = (s: YardSite) => siteContents(s, { plants: all, items, plantings: data?.plantings ?? [], rules: data?.rules ?? [] })
+  const counts = Object.fromEntries(sites.map((s) => { const c = contents(s); return [s.number, c.inGround.length + c.onLists.length + c.notesOnly.length] }))
+  const site = siteNumber === null ? null : (sites.find((s) => s.number === siteNumber) ?? null)
+  const here = site ? contents(site) : null
+  const chooseSite = (n: number | null) => {
+    location.hash = n === null ? 'plants' : `plants/site/${n}`
+  }
+  // The map is tall: bring a newly chosen site's panel into view.
+  const panel = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (siteNumber === null) return
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    panel.current?.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'nearest' })
+  }, [siteNumber])
+
+  const { inGround, onLists, others } = !data
+    ? { inGround: [], onLists: [], others: [] }
+    : here
+      ? { inGround: here.inGround.filter(keep), onLists: here.onLists.filter(keep), others: [] as FullPlant[] }
+      : plantsByPlace(all.filter(keep), items, data.plantings)
   const total = inGround.length + onLists.length + others.length
   const filtering = selected.length > 0 || q.trim() !== ''
 
@@ -87,6 +113,9 @@ export default function Plants({ userId }: { userId: string }) {
 
       {data?.gardenId && (
         <>
+          {map && sites.length > 0 && <YardMap map={map} sites={sites} counts={counts} selected={site?.number ?? null} onSelect={chooseSite} />}
+          {site && here && <SitePanel ref={panel} site={site} notesOnly={here.notesOnly} rules={here.rules} onClear={() => chooseSite(null)} />}
+
           <label className="field">
             Find a plant
             <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name" />
@@ -142,19 +171,19 @@ export default function Plants({ userId }: { userId: string }) {
             <>
               <PlantList
                 title="In the ground"
-                about="Planted in our garden."
+                about={site ? `Growing in ${site.name}.` : 'Planted in our garden.'}
                 plants={inGround}
                 items={items}
                 plantings={data.plantings}
-                empty={filtering ? '' : 'Nothing planted yet. Mark a plant planted in Shopping and it shows up here.'}
+                empty={filtering ? '' : site ? 'Nothing recorded here yet.' : 'Nothing planted yet. Mark a plant planted in Shopping and it shows up here.'}
               />
               <PlantList
                 title="On our shopping lists"
-                about="Still to buy, or bought and waiting to go in."
+                about={site ? `Still to buy for ${site.name}, or bought and waiting to go in.` : 'Still to buy, or bought and waiting to go in.'}
                 plants={onLists}
                 items={items}
                 plantings={data.plantings}
-                empty={filtering ? '' : 'Nothing on the shopping lists right now.'}
+                empty={filtering ? '' : site ? 'Nothing on the lists for this site.' : 'Nothing on the shopping lists right now.'}
               />
               <PlantList
                 title="More plants"
@@ -169,6 +198,68 @@ export default function Plants({ userId }: { userId: string }) {
         </>
       )}
     </>
+  )
+}
+
+// The chosen site: its name and conditions, what to do and not use there, and
+// anything the notes say grows there that isn't in our plant list.
+function SitePanel({
+  ref,
+  site,
+  notesOnly,
+  rules,
+  onClear,
+}: {
+  ref: Ref<HTMLElement>
+  site: YardSite
+  notesOnly: string[]
+  rules: Rule[]
+  onClear: () => void
+}) {
+  const { doLines, dontLines } = summarizeRules(rules)
+  return (
+    <section ref={ref} className="site-panel" style={{ '--c': `var(--site-${site.number}, var(--lichen))` } as CSSProperties} aria-live="polite">
+      <div className="site-head">
+        <h2>
+          {site.number} · {site.name}
+        </h2>
+        <button type="button" className="text-button" onClick={onClear}>
+          Show all
+        </button>
+      </div>
+      {site.conditions && <p className="group-sub">{site.conditions}</p>}
+      {(doLines.length > 0 || dontLines.length > 0) && (
+        <div className="rules-summary">
+          {doLines.length > 0 && (
+            <p data-verdict="yes">
+              <span className="rule-mark" aria-hidden="true">
+                ✓
+              </span>
+              <span>
+                <strong>Do:</strong> {doLines.map((l, i) => (i ? l[0].toLowerCase() + l.slice(1) : l)).join('; ')}.
+              </span>
+            </p>
+          )}
+          {dontLines.length > 0 && (
+            <p data-verdict="no">
+              <span className="rule-mark" aria-hidden="true">
+                ✕
+              </span>
+              <span>
+                <strong>Don't use:</strong> {dontLines.join(', ')}.
+              </span>
+            </p>
+          )}
+        </div>
+      )}
+      {notesOnly.length > 0 && (
+        <p>
+          <span className="label">Also growing here</span>
+          <br />
+          {notesOnly.join(', ')}
+        </p>
+      )}
+    </section>
   )
 }
 

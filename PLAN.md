@@ -26,7 +26,7 @@ After one fall and one spring of use:
 - Other gardens or other users
 - Live nursery stock. Nursery notes carry a "last checked" date instead
 - Weather, frost alerts and watering schedules
-- Bed layouts or drawings
+- Bed-level layouts or planting drawings (a simple to-scale yard map with tappable sites was added October 2026)
 
 ## How it leads to the larger garden planner
 
@@ -63,11 +63,11 @@ All tables live in the `garden` schema. Row-level security: a person can read an
 
 | Table | Holds |
 |---|---|
-| `gardens` | One row: your garden. Name, region, hardiness zone, frost dates (Mar 6 – Nov 16). |
+| `gardens` | One row: your garden. Name, region, hardiness zone, frost dates (Mar 6 – Nov 16), and the yard map (`map`: the yard drawn in feet with each site's outline, loaded from the garden notes by `npm run load:map`). |
 | `members` | Who belongs to a garden, with their initials. |
 | `plants` | The catalogue. Names, kind (native, edible, ornamental, fern, bulb, tree or shrub), plant / bloom / pollinator months, threat tier and reason, rank. |
 | `rules` | Do and don't rules attached to a plant, a kind of plant, or a site. Examples: "No biochar: acid-loving", "No castings: lean site". |
-| `sites` | Your nine sites: number, name, sun, water, size, notes. |
+| `sites` | Your ten sites: number, name, sun, water, size, notes, and the plants the notes say already grow there (`existing`). |
 | `nurseries` | Name, location, website, phone, what they're good for, notes, last checked. |
 | `plan_items` | A plant at a site for a season: quantity, status (to buy, bought, planted, skipped), nursery, notes. |
 | `plantings` | What happened, where and when: planted, sown, moved, divided, died. Who did it. |

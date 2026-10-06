@@ -8,12 +8,14 @@ import Settings from './screens/Settings'
 import { NavIcon, type NavKind } from './screens/NavIcon'
 import SignIn from './screens/SignIn'
 import NewPassword from './screens/NewPassword'
+import { siteFromHash } from './lib/yard'
 import { configured, hasEmailLink, readEmailLink, setRecoveryPending, useRecoveryPending, useSession, type Arrival } from './lib/supabase'
 
 type Screen = NavKind | 'settings' | 'plant'
 interface Route {
   screen: Screen
   plantId?: string
+  site?: number // a site chosen on the Plants map (#plants/site/4)
 }
 
 const TABS: { id: NavKind; label: string }[] = [
@@ -28,6 +30,8 @@ const TABS: { id: NavKind; label: string }[] = [
 function routeFromHash(): Route {
   const id = location.hash.slice(1)
   if (id.startsWith('plant/')) return { screen: 'plant', plantId: decodeURIComponent(id.slice(6)) }
+  const site = siteFromHash(id)
+  if (site !== null) return { screen: 'plants', site }
   return { screen: id === 'settings' || TABS.some((t) => t.id === id) ? (id as Screen) : 'month' }
 }
 
@@ -62,7 +66,7 @@ export default function App() {
 
 function Garden({ userId }: { userId: string }) {
   const [route, setRoute] = useState<Route>(routeFromHash)
-  const { screen, plantId } = route
+  const { screen, plantId, site } = route
 
   useEffect(() => {
     const onHash = () => setRoute(routeFromHash())
@@ -79,7 +83,7 @@ function Garden({ userId }: { userId: string }) {
       <main className="screen">
         {screen === 'month' && <Month userId={userId} />}
         {screen === 'seasons' && <Seasons userId={userId} />}
-        {screen === 'plants' && <Plants userId={userId} />}
+        {screen === 'plants' && <Plants userId={userId} site={site ?? null} />}
         {screen === 'plant' && plantId && <PlantPage key={plantId} userId={userId} plantId={plantId} />}
         {screen === 'pollinators' && <Pollinators userId={userId} />}
         {screen === 'settings' && <Settings />}
